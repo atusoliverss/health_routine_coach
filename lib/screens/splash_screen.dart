@@ -3,8 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart'; // Para controlar o estilo da barra de status
 import 'package:firebase_auth/firebase_auth.dart'; // Para verificar o status de login do Firebase
 
-// Importe a tela de autenticação e a tela home (que criaremos depois)
-//import 'package:health_routine_coach/screens/auth_screen.dart';
+import 'package:health_routine_coach/screens/auth_screen.dart';
 //import 'package:health_routine_coach/screens/home_screen.dart';
 
 class SplashScreen extends StatefulWidget {
@@ -30,14 +29,33 @@ class _SplashScreenState extends State<SplashScreen> {
       if (!mounted) return; // Garante que o widget ainda está montado
 
       if (user == null) {
-        // Usuário não logado, navega para a tela de autenticação.
+        // Usuário não logado, navega para a tela de autenticação com animação
         Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (context) => const SplashScreen()),
+          PageRouteBuilder(
+            pageBuilder: (context, animation, secondaryAnimation) =>
+                const AuthScreen(),
+            transitionsBuilder:
+                (context, animation, secondaryAnimation, child) {
+                  return FadeTransition(opacity: animation, child: child);
+                },
+            transitionDuration: const Duration(seconds: 1),
+          ),
         );
       } else {
-        // Usuário logado, navega para a Home Screen.
+        // Usuário logado, navega para a Home Screen com animação
         Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (context) => const SplashScreen()),
+          PageRouteBuilder(
+            pageBuilder: (context, animation, secondaryAnimation) =>
+                const SplashScreen(), // Se SplashScreen é sua Home Screen principal
+            transitionsBuilder:
+                (context, animation, secondaryAnimation, child) {
+                  return FadeTransition(
+                    opacity: animation, // Anima a opacidade da tela de 0 a 1
+                    child: child,
+                  );
+                },
+            transitionDuration: const Duration(milliseconds: 700),
+          ),
         );
       }
     });

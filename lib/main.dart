@@ -37,6 +37,7 @@ class MyApp extends StatelessWidget {
           ), // Cor dos ícones na barra superior
           titleTextStyle: TextStyle(
             color: Colors.black,
+            fontFamily: 'Roboto',
             fontSize: 20,
             fontWeight: FontWeight.bold,
           ),
