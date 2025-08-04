@@ -2,10 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:health_routine_coach/firebase_options.dart';
 import 'package:health_routine_coach/screens/splash_screen.dart';
+import 'package:intl/date_symbol_data_local.dart';
 
 void main() async {
   // Garante que o Flutter esteja inicializado antes de iniciar o Firebase
   WidgetsFlutterBinding.ensureInitialized();
+
+  //Inicializa os dados de formatação de data para o locale 'pt_BR'
+  await initializeDateFormatting('pt_BR', null);
 
   // Inicializa o Firebase usando as opções geradas para a plataforma atual
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
@@ -68,7 +72,7 @@ class MyApp extends StatelessWidget {
             foregroundColor: const Color(0xFF03A9F4), // Azul para TextButtons
           ),
         ),
-        // Você pode adicionar mais estilos de tema aqui (cores de texto, inputs, etc.)
+        //TODO: adicionar mais estilos de tema aqui (cores de texto, inputs, etc.)
       ),
       home:
           const SplashScreen(), // Define a Splash Screen como a primeira tela a ser exibida

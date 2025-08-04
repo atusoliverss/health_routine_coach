@@ -1,7 +1,7 @@
 // lib/screens/auth_screen.dart
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart'; // Importe o Firebase Auth
-//import 'package:health_routine_coach/screens/home_screen.dart'; // Importe a Home Screen
+import 'package:health_routine_coach/screens/home_screen.dart'; // Importe a Home Screen
 
 class AuthScreen extends StatefulWidget {
   const AuthScreen({super.key});
@@ -102,7 +102,7 @@ class _AuthScreenState extends State<AuthScreen> {
         Navigator.of(context).pushReplacement(
           PageRouteBuilder(
             pageBuilder: (context, animation, secondaryAnimation) =>
-                const AuthScreen(), // Troque por sua Home Screen real!
+                const HomeScreen(), // Troque por sua Home Screen real!
             transitionsBuilder:
                 (context, animation, secondaryAnimation, child) {
                   return FadeTransition(opacity: animation, child: child);
