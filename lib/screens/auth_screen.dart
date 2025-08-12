@@ -1,7 +1,9 @@
 // lib/screens/auth_screen.dart
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart'; // Importe o Firebase Auth
-import 'package:health_routine_coach/screens/home_screen.dart'; // Importe a Home Screen
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:health_routine_coach/screens/home_screen.dart';
+// NOVO: Importe a tela de redefinição de senha
+import 'package:health_routine_coach/screens/auth/forgot_password_screen.dart'; // Ajuste o caminho se necessário
 
 class AuthScreen extends StatefulWidget {
   const AuthScreen({super.key});
@@ -12,10 +14,6 @@ class AuthScreen extends StatefulWidget {
 
 class _AuthScreenState extends State<AuthScreen> {
   bool _isLoginMode = true;
-  // Use uma variável de estado separada para a visibilidade de cada campo de senha,
-  // ou uma única se o comportamento for sempre o mesmo para ambos.
-  // Para simplicidade e como o código original usa uma só, manteremos uma só,
-  // mas idealmente seriam duas: _isPasswordVisible e _isConfirmPasswordVisible.
   bool _isPasswordVisible = false;
 
   final _emailController = TextEditingController();
@@ -38,19 +36,17 @@ class _AuthScreenState extends State<AuthScreen> {
   void _toggleAuthMode() {
     setState(() {
       _isLoginMode = !_isLoginMode;
-      // Limpar campos e mensagens de erro ao alternar
       _emailController.clear();
       _passwordController.clear();
       _confirmPasswordController.clear();
       _nameController.clear();
       _errorMessage = null;
-      _isPasswordVisible = false; // Resetar visibilidade da senha ao alternar
+      _isPasswordVisible = false;
     });
   }
 
   Future<void> _submitAuthForm() async {
-    if (_emailController.text.trim().isEmpty ||
-        _passwordController.text.trim().isEmpty) {
+    if (_emailController.text.trim().isEmpty || _passwordController.text.trim().isEmpty) {
       setState(() {
         _errorMessage = 'Por favor, preencha todos os campos obrigatórios.';
       });
@@ -58,15 +54,13 @@ class _AuthScreenState extends State<AuthScreen> {
     }
 
     if (!_isLoginMode && _nameController.text.trim().isEmpty) {
-      setState(() {
+       setState(() {
         _errorMessage = 'Por favor, insira seu nome completo.';
       });
       return;
     }
 
-    if (!_isLoginMode &&
-        _passwordController.text.trim() !=
-            _confirmPasswordController.text.trim()) {
+    if (!_isLoginMode && _passwordController.text.trim() != _confirmPasswordController.text.trim()) {
       setState(() {
         _errorMessage = 'As senhas não coincidem.';
       });
@@ -85,31 +79,20 @@ class _AuthScreenState extends State<AuthScreen> {
           password: _passwordController.text.trim(),
         );
       } else {
-        UserCredential userCredential = await FirebaseAuth.instance
-            .createUserWithEmailAndPassword(
-              email: _emailController.text.trim(),
-              password: _passwordController.text.trim(),
-            );
-        await userCredential.user?.updateDisplayName(
-          _nameController.text.trim(),
+        UserCredential userCredential = await FirebaseAuth.instance.createUserWithEmailAndPassword(
+          email: _emailController.text.trim(),
+          password: _passwordController.text.trim(),
         );
+        await userCredential.user?.updateDisplayName(_nameController.text.trim());
       }
       if (mounted) {
-        // Navega para a tela de destino após login/cadastro com animação
-        // Substitua 'AuthScreen()' pela sua Home Screen real, por exemplo 'HomeScreen()'
-        // ou 'SplashScreen()' se essa for a próxima tela após a autenticação.
-        // O código original tinha AuthScreen(), mas geralmente seria a Home.
         Navigator.of(context).pushReplacement(
           PageRouteBuilder(
-            pageBuilder: (context, animation, secondaryAnimation) =>
-                const HomeScreen(), // Troque por sua Home Screen real!
-            transitionsBuilder:
-                (context, animation, secondaryAnimation, child) {
-                  return FadeTransition(opacity: animation, child: child);
-                },
-            transitionDuration: const Duration(
-              milliseconds: 700,
-            ), // Duração da animação
+            pageBuilder: (context, animation, secondaryAnimation) => const HomeScreen(),
+            transitionsBuilder: (context, animation, secondaryAnimation, child) {
+              return FadeTransition(opacity: animation, child: child);
+            },
+            transitionDuration: const Duration(milliseconds: 700),
           ),
         );
       }
@@ -148,107 +131,83 @@ class _AuthScreenState extends State<AuthScreen> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              // Logo do aplicativo
               const Image(
-                image: AssetImage('assets/images/logo-hrc.png'),
-                width: 200,
-                height: 200,
+                image: AssetImage('assets/images/logo-hrc.png'), // Certifique-se de que o caminho está correto
+                width: 100, // Ajustado para 100 para ser mais compacto
+                height: 100, // Ajustado para 100 para ser mais compacto
               ),
               const SizedBox(height: 32),
-
-              // Título principal (Acesse sua conta / Crie sua conta)
               Text(
                 _isLoginMode ? 'Acesse sua conta' : 'Crie sua conta',
                 style: const TextStyle(
-                  fontFamily: 'Roboto',
-                  fontSize: 36,
+                  fontSize: 28, // Ajustado para 28 para ser mais compacto
                   fontWeight: FontWeight.bold,
                   color: Colors.black87,
                 ),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 8),
-
-              // Subtítulo
               Text(
                 _isLoginMode
                     ? 'Bem-vindo ao seu melhor treinador'
                     : 'Crie sua conta para começar sua jornada com o "melhor coach"!!',
                 style: const TextStyle(
-                  fontFamily: 'Roboto',
                   fontSize: 16,
                   color: Colors.grey,
                 ),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 32),
-
-              // Campo Nome Completo (aparece apenas no modo de cadastro)
               if (!_isLoginMode) ...[
                 TextField(
                   controller: _nameController,
-                  textAlign: TextAlign.center, // Centraliza o texto digitado
+                  textAlign: TextAlign.center,
                   decoration: InputDecoration(
-                    hintText:
-                        'Nome Completo', // Texto que aparece quando o campo está vazio
+                    hintText: 'Nome Completo',
                     hintStyle: TextStyle(
                       color: Theme.of(context).hintColor,
-                      fontFamily: 'Roboto',
-                      fontSize: 24,
+                      fontSize: 18, // Ajustado para ser mais compacto
                       fontWeight: FontWeight.w300,
                     ),
-                    floatingLabelBehavior:
-                        FloatingLabelBehavior.never, // Mantém o hint fixo
+                    floatingLabelBehavior: FloatingLabelBehavior.never,
                     border: const UnderlineInputBorder(),
                   ),
                   keyboardType: TextInputType.text,
                 ),
                 const SizedBox(height: 24),
               ],
-
-              // Campo Email
               TextField(
                 controller: _emailController,
-                textAlign: TextAlign.center, // Centraliza o texto digitado
+                textAlign: TextAlign.center,
                 decoration: InputDecoration(
-                  hintText:
-                      'Email', // Texto que aparece quando o campo está vazio
+                  hintText: 'Email',
                   hintStyle: TextStyle(
                     color: Theme.of(context).hintColor,
-                    fontFamily: 'Roboto',
-                    fontSize: 24,
+                    fontSize: 18, // Ajustado para ser mais compacto
                     fontWeight: FontWeight.w300,
                   ),
-                  floatingLabelBehavior:
-                      FloatingLabelBehavior.never, // Mantém o hint fixo
+                  floatingLabelBehavior: FloatingLabelBehavior.never,
                   border: const UnderlineInputBorder(),
                 ),
                 keyboardType: TextInputType.emailAddress,
               ),
               const SizedBox(height: 24),
-
-              // Campo Senha
               TextField(
                 controller: _passwordController,
-                textAlign: TextAlign.center, // Centraliza o texto digitado
+                textAlign: TextAlign.center,
                 decoration: InputDecoration(
-                  hintText:
-                      'Senha', // Texto que aparece quando o campo está vazio
+                  hintText: 'Senha',
                   hintStyle: TextStyle(
                     color: Theme.of(context).hintColor,
-                    fontFamily: 'Roboto',
-                    fontSize: 24,
+                    fontSize: 18, // Ajustado para ser mais compacto
                     fontWeight: FontWeight.w300,
                   ),
-                  floatingLabelBehavior:
-                      FloatingLabelBehavior.never, // Mantém o hint fixo
+                  floatingLabelBehavior: FloatingLabelBehavior.never,
                   border: const UnderlineInputBorder(),
                   suffixIcon: IconButton(
                     icon: Icon(
-                      _isPasswordVisible
-                          ? Icons.visibility
-                          : Icons.visibility_off,
-                      color: Colors.grey, // Cor do ícone
+                      _isPasswordVisible ? Icons.visibility : Icons.visibility_off,
+                      color: Colors.grey,
                     ),
                     onPressed: () {
                       setState(() {
@@ -256,43 +215,32 @@ class _AuthScreenState extends State<AuthScreen> {
                       });
                     },
                   ),
-                  // *** Ajuste para centralizar o hint/texto com o suffixIcon ***
-                  // O valor de 'left' (50.0) é um palpite inicial e pode precisar de ajuste fino
-                  // para compensar visualmente o espaço do suffixIcon.
                   contentPadding: const EdgeInsets.fromLTRB(
-                    50.0,
+                    30.0, // Ajustado para ser mais compacto
                     16.0,
                     0.0,
                     16.0,
                   ),
                 ),
-                obscureText:
-                    !_isPasswordVisible, // Controlado pela variável de estado
+                obscureText: !_isPasswordVisible,
               ),
-
-              // Campo Confirmar Senha (aparece apenas no modo de cadastro)
               if (!_isLoginMode) ...[
                 const SizedBox(height: 24),
                 TextField(
                   controller: _confirmPasswordController,
-                  textAlign: TextAlign.center, // Centraliza o texto digitado
+                  textAlign: TextAlign.center,
                   decoration: InputDecoration(
-                    hintText:
-                        'Confirme a sua senha', // Texto que aparece quando o campo está vazio
+                    hintText: 'Confirme a sua senha',
                     hintStyle: TextStyle(
                       color: Theme.of(context).hintColor,
-                      fontFamily: 'Roboto',
-                      fontSize: 24,
+                      fontSize: 18, // Ajustado para ser mais compacto
                       fontWeight: FontWeight.w300,
                     ),
-                    floatingLabelBehavior:
-                        FloatingLabelBehavior.never, // Mantém o hint fixo
+                    floatingLabelBehavior: FloatingLabelBehavior.never,
                     border: const UnderlineInputBorder(),
                     suffixIcon: IconButton(
                       icon: Icon(
-                        _isPasswordVisible // Usa a mesma variável para ambos os campos de senha
-                            ? Icons.visibility
-                            : Icons.visibility_off,
+                        _isPasswordVisible ? Icons.visibility : Icons.visibility_off,
                         color: Colors.grey,
                       ),
                       onPressed: () {
@@ -301,22 +249,17 @@ class _AuthScreenState extends State<AuthScreen> {
                         });
                       },
                     ),
-                    // *** Ajuste para centralizar o hint/texto com o suffixIcon ***
                     contentPadding: const EdgeInsets.fromLTRB(
-                      50.0,
+                      30.0, // Ajustado para ser mais compacto
                       16.0,
                       0.0,
                       16.0,
                     ),
                   ),
-                  obscureText:
-                      !_isPasswordVisible, // Controlado pela variável de estado
+                  obscureText: !_isPasswordVisible,
                 ),
               ],
-
               const SizedBox(height: 32),
-
-              // Exibição de mensagens de erro
               if (_errorMessage != null)
                 Padding(
                   padding: const EdgeInsets.only(bottom: 16.0),
@@ -326,47 +269,54 @@ class _AuthScreenState extends State<AuthScreen> {
                     textAlign: TextAlign.center,
                   ),
                 ),
-
-              // Botão de Entrar/Criar conta
               _isLoading
                   ? const CircularProgressIndicator()
                   : ElevatedButton(
                       onPressed: _submitAuthForm,
                       style: ElevatedButton.styleFrom(
-                        minimumSize: const Size.fromHeight(
-                          50,
-                        ), // Botão de largura total
+                        minimumSize: const Size.fromHeight(50),
                       ),
                       child: Text(
                         _isLoginMode ? 'Entrar' : 'Criar conta',
-                        style: const TextStyle(
-                          fontSize: 30,
-                          fontFamily: 'Roboto',
-                        ),
+                        style: const TextStyle(fontSize: 18), // Ajustado para ser mais compacto
                       ),
                     ),
               const SizedBox(height: 24),
-
-              // Link para alternar entre modos de login/cadastro
+              // NOVO: Link "Esqueceu a senha?"
+              if (_isLoginMode) // Apenas no modo de login
+                TextButton(
+                  onPressed: () {
+                    // Lógica de navegação para a tela de redefinição de senha
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (context) => const ForgotPasswordScreen(),
+                      ),
+                    );
+                  },
+                  child: const Text(
+                    'Esqueceu sua senha?',
+                    style: TextStyle(
+                      fontSize: 16,
+                      color: Colors.black54, // Cor mais neutra para este link
+                      fontWeight: FontWeight.normal,
+                    ),
+                  ),
+                ),
+              const SizedBox(height: 16), // Espaçamento adicional se o link de senha estiver presente
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Text(
                     _isLoginMode ? 'Ainda sem conta?' : 'Já possui uma conta?',
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontFamily: 'Roboto',
-                      color: Colors.black87,
-                    ),
+                    style: const TextStyle(fontSize: 16, color: Colors.black87),
                   ),
                   TextButton(
                     onPressed: _toggleAuthMode,
                     child: Text(
                       _isLoginMode ? 'Criar conta' : 'Entrar',
                       style: TextStyle(
-                        fontFamily: 'Roboto',
                         fontSize: 16,
-                        color: Color(0xFF03A9F4),
+                        color: Theme.of(context).primaryColor,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
