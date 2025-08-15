@@ -1,7 +1,7 @@
-// lib/screens/metas/detalhe_meta_screen.dart
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:health_routine_coach/models/meta.dart';
+import 'package:health_routine_coach/services/firestore_service.dart';
 import 'package:health_routine_coach/screens/metas/add_edit_meta_screen.dart';
 
 class DetalheMetaScreen extends StatefulWidget {
@@ -14,6 +14,7 @@ class DetalheMetaScreen extends StatefulWidget {
 }
 
 class _DetalheMetaScreenState extends State<DetalheMetaScreen> {
+  final FirestoreService _firestoreService = FirestoreService();
   late Meta _currentMeta;
 
   @override
@@ -32,7 +33,7 @@ class _DetalheMetaScreenState extends State<DetalheMetaScreen> {
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(
-                'Você tem certeza que deseja excluir a meta "${_currentMeta.name}" ?',
+                'Você tem certeza que deseja excluir a meta "${_currentMeta.name}"?',
                 textAlign: TextAlign.center,
                 style: const TextStyle(fontSize: 16),
               ),
@@ -44,29 +45,16 @@ class _DetalheMetaScreenState extends State<DetalheMetaScreen> {
               ),
             ],
           ),
+          actionsAlignment: MainAxisAlignment.center,
           actions: <Widget>[
-            Expanded(
-              child: ElevatedButton.icon(
-                onPressed: () => Navigator.of(context).pop(false),
-                icon: const Icon(Icons.arrow_back),
-                label: const Text('CANCELAR'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF03A9F4),
-                  foregroundColor: Colors.white,
-                ),
-              ),
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('CANCELAR'),
             ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: ElevatedButton.icon(
-                onPressed: () => Navigator.of(context).pop(true),
-                icon: const Icon(Icons.delete),
-                label: const Text('EXCLUIR'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.red,
-                  foregroundColor: Colors.white,
-                ),
-              ),
+            ElevatedButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+              child: const Text('EXCLUIR'),
             ),
           ],
         );
@@ -74,22 +62,26 @@ class _DetalheMetaScreenState extends State<DetalheMetaScreen> {
     );
 
     if (confirm == true) {
+      await _firestoreService.deleteGoal(_currentMeta.id);
       if (mounted) {
-        Navigator.of(context).pop(null);
+        Navigator.of(context).pop();
       }
     }
   }
 
-  void _markAsComplete() {
+  Future<void> _markAsComplete() async {
     setState(() {
       _currentMeta.status = MetaStatus.concluido;
     });
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Meta "${_currentMeta.name}" marcada como concluída!'),
-        backgroundColor: Colors.green,
-      ),
-    );
+    await _firestoreService.saveGoal(_currentMeta);
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Meta "${_currentMeta.name}" marcada como concluída!'),
+          backgroundColor: Colors.green,
+        ),
+      );
+    }
   }
 
   @override
@@ -112,19 +104,11 @@ class _DetalheMetaScreenState extends State<DetalheMetaScreen> {
     }
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text(_currentMeta.name),
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () {
-            Navigator.of(context).pop(_currentMeta);
-          },
-        ),
-      ),
+      appBar: AppBar(title: Text(_currentMeta.name)),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             const Text(
               'DETALHE DA META',
@@ -184,7 +168,7 @@ class _DetalheMetaScreenState extends State<DetalheMetaScreen> {
                 ),
               ),
             ),
-            const SizedBox(height: 20),
+            const Spacer(), // Empurra os botões para baixo
             if (_currentMeta.status != MetaStatus.concluido)
               ElevatedButton.icon(
                 onPressed: _markAsComplete,
@@ -192,10 +176,11 @@ class _DetalheMetaScreenState extends State<DetalheMetaScreen> {
                 label: const Text('MARCAR COMO CONCLUÍDA'),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.green,
+                  foregroundColor: Colors.white,
                   minimumSize: const Size.fromHeight(50),
                 ),
               ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 16),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
@@ -207,7 +192,7 @@ class _DetalheMetaScreenState extends State<DetalheMetaScreen> {
                       foregroundColor: Colors.white,
                     ),
                     icon: const Icon(Icons.delete),
-                    label: const Text('EXCLUIR META'),
+                    label: const Text('EXCLUIR'),
                   ),
                 ),
                 const SizedBox(width: 16),
@@ -221,7 +206,7 @@ class _DetalheMetaScreenState extends State<DetalheMetaScreen> {
                                   AddEditMetaScreen(meta: _currentMeta),
                             ),
                           );
-                      if (updatedMeta != null) {
+                      if (updatedMeta != null && mounted) {
                         setState(() {
                           _currentMeta = updatedMeta;
                         });
@@ -232,7 +217,7 @@ class _DetalheMetaScreenState extends State<DetalheMetaScreen> {
                       foregroundColor: Colors.white,
                     ),
                     icon: const Icon(Icons.edit),
-                    label: const Text('EDITAR META'),
+                    label: const Text('EDITAR'),
                   ),
                 ),
               ],

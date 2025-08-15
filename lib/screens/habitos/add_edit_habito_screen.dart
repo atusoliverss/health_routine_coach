@@ -1,10 +1,7 @@
-// lib/screens/habitos/add_edit_habito_screen.dart
 import 'package:flutter/material.dart';
 import 'package:uuid/uuid.dart';
-
 import 'package:health_routine_coach/models/habito.dart';
-import 'package:health_routine_coach/models/rotina.dart';
-import 'package:health_routine_coach/screens/rotinas/rotinas_screen.dart'; // Import para dummyRotinas
+import 'package:health_routine_coach/services/firestore_service.dart';
 
 class AddEditHabitoScreen extends StatefulWidget {
   final Habito? habito;
@@ -17,13 +14,13 @@ class AddEditHabitoScreen extends StatefulWidget {
 
 class _AddEditHabitoScreenState extends State<AddEditHabitoScreen> {
   final _formKey = GlobalKey<FormState>();
+  final FirestoreService _firestoreService = FirestoreService();
   late TextEditingController _nameController;
   late TextEditingController _descriptionController;
   FrequencyType _selectedFrequencyType = FrequencyType.daily;
   late TextEditingController _weeklyTargetController;
   late List<int> _selectedSpecificDays;
   Turno? _selectedTurno;
-  Rotina? _selectedRotina;
 
   final List<String> _weekDaysNames = [
     'Seg',
@@ -45,16 +42,10 @@ class _AddEditHabitoScreenState extends State<AddEditHabitoScreen> {
     _selectedFrequencyType =
         widget.habito?.frequencyType ?? FrequencyType.daily;
     _weeklyTargetController = TextEditingController(
-      text: widget.habito?.weeklyTarget?.toString() ?? '1',
+      text: widget.habito?.weeklyTarget?.toString() ?? '3',
     );
     _selectedSpecificDays = List.from(widget.habito?.specificDays ?? []);
     _selectedTurno = widget.habito?.preferredTurn;
-    if (widget.habito != null) {
-      _selectedRotina = dummyRotinas.firstWhere(
-        (rotina) => rotina.habitIds.contains(widget.habito!.id),
-        orElse: () => dummyRotinas.first,
-      );
-    }
   }
 
   @override
@@ -65,40 +56,34 @@ class _AddEditHabitoScreenState extends State<AddEditHabitoScreen> {
     super.dispose();
   }
 
-  void _saveHabito() {
-    if (_formKey.currentState!.validate()) {
-      if (_selectedFrequencyType == FrequencyType.specificDays &&
-          _selectedSpecificDays.isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Selecione pelo menos um dia da semana.'),
-          ),
-        );
-        return;
-      }
+  Future<void> _saveHabito() async {
+    if (!_formKey.currentState!.validate()) return;
 
-      final String id = widget.habito?.id ?? const Uuid().v4();
-      final String userId = widget.habito?.userId ?? 'current_user_id';
-      final String name = _nameController.text.trim();
-      final String? description = _descriptionController.text.trim().isEmpty
-          ? null
-          : _descriptionController.text.trim();
-
-      Habito newOrUpdatedHabito = Habito(
-        id: id,
-        userId: userId,
-        name: name,
-        description: description,
-        frequencyType: _selectedFrequencyType,
-        weeklyTarget: _selectedFrequencyType == FrequencyType.weeklyTimes
-            ? int.tryParse(_weeklyTargetController.text) ?? 1
-            : null,
-        specificDays: _selectedFrequencyType == FrequencyType.specificDays
-            ? _selectedSpecificDays
-            : null,
-        preferredTurn: _selectedTurno,
+    if (_selectedFrequencyType == FrequencyType.specificDays &&
+        _selectedSpecificDays.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Selecione pelo menos um dia da semana.')),
       );
+      return;
+    }
 
+    final newOrUpdatedHabito = Habito(
+      id: widget.habito?.id ?? const Uuid().v4(),
+      name: _nameController.text.trim(),
+      description: _descriptionController.text.trim(),
+      frequencyType: _selectedFrequencyType,
+      weeklyTarget: _selectedFrequencyType == FrequencyType.weeklyTimes
+          ? int.tryParse(_weeklyTargetController.text)
+          : null,
+      specificDays: _selectedFrequencyType == FrequencyType.specificDays
+          ? _selectedSpecificDays
+          : null,
+      preferredTurn: _selectedTurno,
+    );
+
+    await _firestoreService.saveHabit(newOrUpdatedHabito);
+
+    if (mounted) {
       Navigator.of(context).pop(newOrUpdatedHabito);
     }
   }
@@ -107,19 +92,13 @@ class _AddEditHabitoScreenState extends State<AddEditHabitoScreen> {
   Widget build(BuildContext context) {
     final bool isEditing = widget.habito != null;
     return Scaffold(
-      appBar: AppBar(
-        title: Text(isEditing ? 'Editar Hábito' : 'Adicionar / Editar Hábito'),
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () => Navigator.of(context).pop(),
-        ),
-      ),
+      appBar: AppBar(title: Text(isEditing ? 'Editar Hábito' : 'Novo Hábito')),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
         child: Form(
           key: _formKey,
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Card(
                 margin: EdgeInsets.zero,
@@ -134,18 +113,15 @@ class _AddEditHabitoScreenState extends State<AddEditHabitoScreen> {
                           labelText: 'Nome:',
                           border: OutlineInputBorder(),
                         ),
-                        validator: (value) {
-                          if (value == null || value.isEmpty) {
-                            return 'Por favor, insira um nome.';
-                          }
-                          return null;
-                        },
+                        validator: (value) => (value == null || value.isEmpty)
+                            ? 'Por favor, insira um nome.'
+                            : null,
                       ),
                       const SizedBox(height: 16),
                       TextFormField(
                         controller: _descriptionController,
                         decoration: const InputDecoration(
-                          labelText: 'Descrição:',
+                          labelText: 'Descrição (opcional):',
                           border: OutlineInputBorder(),
                         ),
                         maxLines: 3,
@@ -189,11 +165,9 @@ class _AddEditHabitoScreenState extends State<AddEditHabitoScreen> {
                             ),
                             keyboardType: TextInputType.number,
                             validator: (value) {
-                              if (_selectedFrequencyType ==
-                                      FrequencyType.weeklyTimes &&
-                                  (value == null ||
-                                      int.tryParse(value) == null ||
-                                      int.parse(value) <= 0)) {
+                              if (value == null ||
+                                  int.tryParse(value) == null ||
+                                  int.parse(value) <= 0) {
                                 return 'Insira um número válido.';
                               }
                               return null;
@@ -253,7 +227,7 @@ class _AddEditHabitoScreenState extends State<AddEditHabitoScreen> {
                       DropdownButtonFormField<Turno>(
                         value: _selectedTurno,
                         decoration: const InputDecoration(
-                          labelText: 'Turno Preferido:',
+                          labelText: 'Turno Preferido (opcional):',
                           border: OutlineInputBorder(),
                         ),
                         hint: const Text('Selecione um turno'),
@@ -263,6 +237,7 @@ class _AddEditHabitoScreenState extends State<AddEditHabitoScreen> {
                           });
                         },
                         items: const [
+                          DropdownMenuItem(value: null, child: Text('Nenhum')),
                           DropdownMenuItem(
                             value: Turno.manha,
                             child: Text('Manhã'),
@@ -277,46 +252,26 @@ class _AddEditHabitoScreenState extends State<AddEditHabitoScreen> {
                           ),
                         ],
                       ),
-                      const SizedBox(height: 24),
-                      DropdownButtonFormField<Rotina>(
-                        value: _selectedRotina,
-                        decoration: const InputDecoration(
-                          labelText: 'Vincular à Rotina:',
-                          border: OutlineInputBorder(),
-                        ),
-                        hint: const Text('Nenhuma'),
-                        onChanged: (Rotina? newValue) {
-                          setState(() {
-                            _selectedRotina = newValue;
-                          });
-                        },
-                        items: [
-                          const DropdownMenuItem<Rotina>(
-                            value: null,
-                            child: Text('Nenhuma'),
-                          ),
-                          ...dummyRotinas.map(
-                            (rotina) => DropdownMenuItem(
-                              value: rotina,
-                              child: Text(rotina.name),
-                            ),
-                          ),
-                        ],
-                      ),
                     ],
                   ),
                 ),
               ),
+              const SizedBox(height: 80), // Espaço para o botão flutuante
             ],
           ),
         ),
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
-      floatingActionButton: ElevatedButton.icon(
-        onPressed: _saveHabito,
-        icon: const Icon(Icons.add),
-        label: Text(isEditing ? 'SALVAR' : 'CRIAR HÁBITO'),
-        style: ElevatedButton.styleFrom(minimumSize: const Size.fromHeight(50)),
+      floatingActionButton: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16.0),
+        child: ElevatedButton.icon(
+          onPressed: _saveHabito,
+          icon: const Icon(Icons.save),
+          label: Text(isEditing ? 'SALVAR ALTERAÇÕES' : 'CRIAR HÁBITO'),
+          style: ElevatedButton.styleFrom(
+            minimumSize: const Size.fromHeight(50),
+          ),
+        ),
       ),
     );
   }

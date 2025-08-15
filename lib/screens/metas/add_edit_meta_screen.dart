@@ -1,9 +1,8 @@
-// lib/screens/metas/add_edit_meta_screen.dart
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:uuid/uuid.dart';
-
 import 'package:health_routine_coach/models/meta.dart';
+import 'package:health_routine_coach/services/firestore_service.dart';
 
 class AddEditMetaScreen extends StatefulWidget {
   final Meta? meta;
@@ -16,6 +15,7 @@ class AddEditMetaScreen extends StatefulWidget {
 
 class _AddEditMetaScreenState extends State<AddEditMetaScreen> {
   final _formKey = GlobalKey<FormState>();
+  final FirestoreService _firestoreService = FirestoreService();
   late TextEditingController _nameController;
   late TextEditingController _descriptionController;
   late TextEditingController _deadlineController;
@@ -59,32 +59,28 @@ class _AddEditMetaScreenState extends State<AddEditMetaScreen> {
     }
   }
 
-  void _saveMeta() {
-    if (_formKey.currentState!.validate()) {
-      if (_selectedDate == null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Por favor, selecione um prazo final.')),
-        );
-        return;
-      }
+  Future<void> _saveMeta() async {
+    if (!_formKey.currentState!.validate()) return;
 
-      final String id = widget.meta?.id ?? const Uuid().v4();
-      final String userId = widget.meta?.userId ?? 'current_user_id';
-      final String name = _nameController.text.trim();
-      final String? description = _descriptionController.text.trim().isEmpty
-          ? null
-          : _descriptionController.text.trim();
-      final DateTime deadline = _selectedDate!;
-
-      Meta newOrUpdatedMeta = Meta(
-        id: id,
-        userId: userId,
-        name: name,
-        description: description,
-        deadline: deadline,
-        status: widget.meta?.status ?? MetaStatus.emProgresso,
+    if (_selectedDate == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Por favor, selecione um prazo final.')),
       );
+      return;
+    }
 
+    final newOrUpdatedMeta = Meta(
+      id: widget.meta?.id ?? const Uuid().v4(),
+      name: _nameController.text.trim(),
+      description: _descriptionController.text.trim(),
+      deadline: _selectedDate!,
+      status: widget.meta?.status ?? MetaStatus.emProgresso,
+    );
+
+    await _firestoreService.saveGoal(newOrUpdatedMeta);
+
+    if (mounted) {
+      // Retorna a meta salva para a tela de detalhes, caso ela precise se atualizar.
       Navigator.of(context).pop(newOrUpdatedMeta);
     }
   }
@@ -93,13 +89,7 @@ class _AddEditMetaScreenState extends State<AddEditMetaScreen> {
   Widget build(BuildContext context) {
     final bool isEditing = widget.meta != null;
     return Scaffold(
-      appBar: AppBar(
-        title: Text(isEditing ? 'Editar Meta' : 'Adicionar / Editar Meta'),
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () => Navigator.of(context).pop(),
-        ),
-      ),
+      appBar: AppBar(title: Text(isEditing ? 'Editar Meta' : 'Nova Meta')),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
         child: Form(
@@ -120,18 +110,15 @@ class _AddEditMetaScreenState extends State<AddEditMetaScreen> {
                           labelText: 'Nome da Meta:',
                           border: OutlineInputBorder(),
                         ),
-                        validator: (value) {
-                          if (value == null || value.isEmpty) {
-                            return 'Por favor, insira um nome.';
-                          }
-                          return null;
-                        },
+                        validator: (value) => (value == null || value.isEmpty)
+                            ? 'Por favor, insira um nome.'
+                            : null,
                       ),
                       const SizedBox(height: 16),
                       TextFormField(
                         controller: _descriptionController,
                         decoration: const InputDecoration(
-                          labelText: 'Descrição:',
+                          labelText: 'Descrição (opcional):',
                           border: OutlineInputBorder(),
                         ),
                         maxLines: 3,
@@ -150,12 +137,9 @@ class _AddEditMetaScreenState extends State<AddEditMetaScreen> {
                             onPressed: () => _selectDate(context),
                           ),
                         ),
-                        validator: (value) {
-                          if (_selectedDate == null) {
-                            return 'Selecione uma data.';
-                          }
-                          return null;
-                        },
+                        validator: (value) => (_selectedDate == null)
+                            ? 'Selecione uma data.'
+                            : null,
                       ),
                     ],
                   ),
@@ -166,11 +150,16 @@ class _AddEditMetaScreenState extends State<AddEditMetaScreen> {
         ),
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
-      floatingActionButton: ElevatedButton.icon(
-        onPressed: _saveMeta,
-        icon: const Icon(Icons.add),
-        label: Text(isEditing ? 'SALVAR' : 'CRIAR META'),
-        style: ElevatedButton.styleFrom(minimumSize: const Size.fromHeight(50)),
+      floatingActionButton: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16.0),
+        child: ElevatedButton.icon(
+          onPressed: _saveMeta,
+          icon: const Icon(Icons.save),
+          label: Text(isEditing ? 'SALVAR ALTERAÇÕES' : 'CRIAR META'),
+          style: ElevatedButton.styleFrom(
+            minimumSize: const Size.fromHeight(50),
+          ),
+        ),
       ),
     );
   }

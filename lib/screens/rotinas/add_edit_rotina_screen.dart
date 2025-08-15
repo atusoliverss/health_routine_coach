@@ -1,9 +1,10 @@
 // lib/screens/rotinas/add_edit_rotina_screen.dart
+
 import 'package:flutter/material.dart';
 import 'package:uuid/uuid.dart';
 import 'package:health_routine_coach/models/rotina.dart';
 import 'package:health_routine_coach/models/habito.dart';
-import 'package:health_routine_coach/screens/habitos/habitos_screen.dart'; // Import para a lista de dummyHabitos
+import 'package:health_routine_coach/services/firestore_service.dart';
 
 class AddEditRotinaScreen extends StatefulWidget {
   final Rotina? rotina;
@@ -16,10 +17,12 @@ class AddEditRotinaScreen extends StatefulWidget {
 
 class _AddEditRotinaScreenState extends State<AddEditRotinaScreen> {
   final _formKey = GlobalKey<FormState>();
+  final FirestoreService _firestoreService = FirestoreService();
   late TextEditingController _nameController;
   late TextEditingController _descriptionController;
   late List<int> _selectedDays;
   late List<Habito> _selectedHabits;
+  late Future<List<Habito>> _allHabitsFuture;
 
   final List<String> _weekDaysNames = [
     'Seg',
@@ -39,9 +42,23 @@ class _AddEditRotinaScreenState extends State<AddEditRotinaScreen> {
       text: widget.rotina?.description ?? '',
     );
     _selectedDays = List.from(widget.rotina?.activeDays ?? []);
-    _selectedHabits = dummyHabitos
-        .where((h) => widget.rotina?.habitIds.contains(h.id) ?? false)
-        .toList();
+    _selectedHabits = [];
+    _allHabitsFuture = _firestoreService.getHabitsOnce();
+
+    if (widget.rotina != null) {
+      _loadInitialHabits();
+    }
+  }
+
+  Future<void> _loadInitialHabits() async {
+    final allHabits = await _allHabitsFuture;
+    if (mounted) {
+      setState(() {
+        _selectedHabits = allHabits
+            .where((h) => widget.rotina!.habitIds.contains(h.id))
+            .toList();
+      });
+    }
   }
 
   @override
@@ -51,7 +68,53 @@ class _AddEditRotinaScreenState extends State<AddEditRotinaScreen> {
     super.dispose();
   }
 
+  Future<void> _saveRotina() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    if (_selectedDays.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Por favor, selecione pelo menos um dia da semana.'),
+        ),
+      );
+      return;
+    }
+
+    final newOrUpdatedRotina = Rotina(
+      id: widget.rotina?.id ?? const Uuid().v4(),
+      name: _nameController.text.trim(),
+      description: _descriptionController.text.trim(),
+      activeDays: _selectedDays,
+      habitIds: _selectedHabits.map((h) => h.id).toList(),
+    );
+
+    await _firestoreService.saveRoutine(newOrUpdatedRotina);
+
+    if (mounted) {
+      Navigator.of(context).pop();
+    }
+  }
+
+  Future<void> _selectHabits() async {
+    final allHabits = await _allHabitsFuture;
+    final List<Habito>? result = await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => _HabitSelectionScreen(
+          allHabits: allHabits,
+          initialSelectedHabits: _selectedHabits,
+        ),
+      ),
+    );
+
+    if (result != null && mounted) {
+      setState(() {
+        _selectedHabits = result;
+      });
+    }
+  }
+
   Future<void> _selectDays() async {
+    final List<int> tempSelectedDays = List.from(_selectedDays);
     final List<int>? result = await showDialog<List<int>>(
       context: context,
       builder: (BuildContext context) {
@@ -64,18 +127,17 @@ class _AddEditRotinaScreenState extends State<AddEditRotinaScreen> {
                 runSpacing: 8.0,
                 children: List.generate(7, (index) {
                   final dayNum = index + 1;
-                  final isSelected = _selectedDays.contains(dayNum);
+                  final isSelected = tempSelectedDays.contains(dayNum);
                   return FilterChip(
                     label: Text(_weekDaysNames[index]),
                     selected: isSelected,
                     onSelected: (bool selected) {
                       setStateInDialog(() {
                         if (selected) {
-                          _selectedDays.add(dayNum);
+                          tempSelectedDays.add(dayNum);
                         } else {
-                          _selectedDays.remove(dayNum);
+                          tempSelectedDays.remove(dayNum);
                         }
-                        _selectedDays.sort();
                       });
                     },
                     selectedColor: Theme.of(context).primaryColor,
@@ -89,7 +151,7 @@ class _AddEditRotinaScreenState extends State<AddEditRotinaScreen> {
               actions: <Widget>[
                 TextButton(
                   child: const Text('CONCLUIR'),
-                  onPressed: () => Navigator.of(context).pop(_selectedDays),
+                  onPressed: () => Navigator.of(context).pop(tempSelectedDays),
                 ),
               ],
             );
@@ -100,58 +162,8 @@ class _AddEditRotinaScreenState extends State<AddEditRotinaScreen> {
 
     if (result != null) {
       setState(() {
-        _selectedDays = result;
+        _selectedDays = result..sort();
       });
-    }
-  }
-
-  Future<void> _selectHabits() async {
-    final List<Habito>? result = await Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (context) => _HabitSelectionScreen(
-          allHabits: dummyHabitos,
-          initialSelectedHabits: _selectedHabits,
-        ),
-      ),
-    );
-
-    if (result != null) {
-      setState(() {
-        _selectedHabits = result;
-      });
-    }
-  }
-
-  void _saveRotina() {
-    if (_formKey.currentState!.validate()) {
-      if (_selectedDays.isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Por favor, selecione pelo menos um dia da semana.'),
-          ),
-        );
-        return;
-      }
-
-      final String id = widget.rotina?.id ?? const Uuid().v4();
-      final String userId = widget.rotina?.userId ?? 'current_user_id';
-      final String name = _nameController.text.trim();
-      final String? description = _descriptionController.text.trim().isEmpty
-          ? null
-          : _descriptionController.text.trim();
-      final List<int> activeDays = _selectedDays;
-      final List<String> habitIds = _selectedHabits.map((h) => h.id).toList();
-
-      final newOrUpdatedRotina = Rotina(
-        id: id,
-        userId: userId,
-        name: name,
-        description: description,
-        activeDays: activeDays,
-        habitIds: habitIds,
-      );
-
-      Navigator.of(context).pop(newOrUpdatedRotina);
     }
   }
 
@@ -159,13 +171,7 @@ class _AddEditRotinaScreenState extends State<AddEditRotinaScreen> {
   Widget build(BuildContext context) {
     final bool isEditing = widget.rotina != null;
     return Scaffold(
-      appBar: AppBar(
-        title: Text(isEditing ? 'Editar Rotina' : 'Adicionar / Editar Rotina'),
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () => Navigator.of(context).pop(),
-        ),
-      ),
+      appBar: AppBar(title: Text(isEditing ? 'Editar Rotina' : 'Nova Rotina')),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
         child: Form(
@@ -186,18 +192,15 @@ class _AddEditRotinaScreenState extends State<AddEditRotinaScreen> {
                           labelText: 'Nome da rotina:',
                           border: OutlineInputBorder(),
                         ),
-                        validator: (value) {
-                          if (value == null || value.isEmpty) {
-                            return 'Por favor, insira um nome.';
-                          }
-                          return null;
-                        },
+                        validator: (value) => (value == null || value.isEmpty)
+                            ? 'Por favor, insira um nome.'
+                            : null,
                       ),
                       const SizedBox(height: 16),
                       TextFormField(
                         controller: _descriptionController,
                         decoration: const InputDecoration(
-                          labelText: 'Descrição:',
+                          labelText: 'Descrição (opcional):',
                           border: OutlineInputBorder(),
                         ),
                         maxLines: 3,
@@ -212,27 +215,19 @@ class _AddEditRotinaScreenState extends State<AddEditRotinaScreen> {
                         ),
                       ),
                       const SizedBox(height: 8),
-                      GestureDetector(
-                        onTap: () => _selectDays(),
-                        child: AbsorbPointer(
-                          child: TextFormField(
-                            readOnly: true,
-                            decoration: InputDecoration(
-                              hintText: 'Selecione os dias da semana',
-                              border: const OutlineInputBorder(),
-                              suffixIcon: const Icon(Icons.calendar_today),
-                              errorText:
-                                  _selectedDays.isEmpty &&
-                                      _formKey.currentState != null &&
-                                      !_formKey.currentState!.validate()
-                                  ? 'Selecione pelo menos um dia.'
-                                  : null,
-                              labelText: _selectedDays.isNotEmpty
-                                  ? _selectedDays
-                                        .map((e) => _weekDaysNames[e - 1])
-                                        .join(', ')
-                                  : null,
-                            ),
+                      InkWell(
+                        onTap: _selectDays,
+                        child: InputDecorator(
+                          decoration: const InputDecoration(
+                            border: OutlineInputBorder(),
+                            suffixIcon: Icon(Icons.calendar_today),
+                          ),
+                          child: Text(
+                            _selectedDays.isEmpty
+                                ? 'Selecione os dias'
+                                : _selectedDays
+                                      .map((d) => _weekDaysNames[d - 1])
+                                      .join(', '),
                           ),
                         ),
                       ),
@@ -269,32 +264,6 @@ class _AddEditRotinaScreenState extends State<AddEditRotinaScreen> {
                         ),
                       ),
                       const SizedBox(height: 16),
-                      ListView.builder(
-                        shrinkWrap: true,
-                        physics: const NeverScrollableScrollPhysics(),
-                        itemCount: _selectedHabits.length,
-                        itemBuilder: (context, index) {
-                          final habit = _selectedHabits[index];
-                          return Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 4.0),
-                            child: Row(
-                              children: [
-                                Icon(
-                                  Icons.check_circle,
-                                  color: Theme.of(context).primaryColor,
-                                ),
-                                const SizedBox(width: 12),
-                                Expanded(
-                                  child: Text(
-                                    habit.name,
-                                    style: const TextStyle(fontSize: 16),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          );
-                        },
-                      ),
                       if (_selectedHabits.isEmpty)
                         const Padding(
                           padding: EdgeInsets.symmetric(vertical: 8.0),
@@ -302,40 +271,57 @@ class _AddEditRotinaScreenState extends State<AddEditRotinaScreen> {
                             'Nenhum hábito selecionado para esta rotina.',
                             style: TextStyle(color: Colors.grey),
                           ),
+                        )
+                      else
+                        ListView.builder(
+                          shrinkWrap: true,
+                          physics: const NeverScrollableScrollPhysics(),
+                          itemCount: _selectedHabits.length,
+                          itemBuilder: (context, index) {
+                            final habit = _selectedHabits[index];
+                            return ListTile(
+                              leading: Icon(
+                                Icons.check_circle,
+                                color: Theme.of(context).primaryColor,
+                              ),
+                              title: Text(habit.name),
+                              dense: true,
+                            );
+                          },
                         ),
                     ],
                   ),
                 ),
               ),
+              const SizedBox(height: 80), // Espaço para o botão flutuante
             ],
           ),
         ),
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
-      floatingActionButton: ElevatedButton.icon(
-        onPressed: _saveRotina,
-        icon: const Icon(Icons.add),
-        label: Text(isEditing ? 'SALVAR' : 'CRIAR ROTINA'),
-        style: ElevatedButton.styleFrom(
-          minimumSize: const Size.fromHeight(50),
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+      floatingActionButton: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16.0),
+        child: ElevatedButton.icon(
+          onPressed: _saveRotina,
+          icon: const Icon(Icons.save),
+          label: Text(isEditing ? 'SALVAR ALTERAÇÕES' : 'CRIAR ROTINA'),
+          style: ElevatedButton.styleFrom(
+            minimumSize: const Size.fromHeight(50),
+          ),
         ),
       ),
     );
   }
 }
 
-// ---- Tela de Seleção de Hábitos (Modal ou Nova Rota) ----
-// Este é o widget que faltava para o erro ser resolvido!
 class _HabitSelectionScreen extends StatefulWidget {
   final List<Habito> allHabits;
   final List<Habito> initialSelectedHabits;
 
   const _HabitSelectionScreen({
-    Key? key,
     required this.allHabits,
     required this.initialSelectedHabits,
-  }) : super(key: key);
+  });
 
   @override
   State<_HabitSelectionScreen> createState() => _HabitSelectionScreenState();
@@ -350,9 +336,8 @@ class _HabitSelectionScreenState extends State<_HabitSelectionScreen> {
     _currentSelectedHabits = List.from(widget.initialSelectedHabits);
   }
 
-  bool _isHabitSelected(Habito habit) {
-    return _currentSelectedHabits.any((h) => h.id == habit.id);
-  }
+  bool _isHabitSelected(Habito habit) =>
+      _currentSelectedHabits.any((h) => h.id == habit.id);
 
   void _toggleHabitSelection(Habito habit) {
     setState(() {
@@ -371,26 +356,25 @@ class _HabitSelectionScreenState extends State<_HabitSelectionScreen> {
         title: const Text('Selecionar Hábitos'),
         actions: [
           TextButton(
-            onPressed: () {
-              Navigator.of(context).pop(_currentSelectedHabits);
-            },
+            onPressed: () => Navigator.of(context).pop(_currentSelectedHabits),
             child: const Text('CONCLUIR'),
           ),
         ],
       ),
       body: widget.allHabits.isEmpty
-          ? const Center(child: Text('Nenhum hábito disponível para seleção.'))
+          ? const Center(
+              child: Text(
+                'Nenhum hábito cadastrado. Crie um na aba "Hábitos".',
+              ),
+            )
           : ListView.builder(
               itemCount: widget.allHabits.length,
               itemBuilder: (context, index) {
                 final habit = widget.allHabits[index];
-                final isSelected = _isHabitSelected(habit);
                 return CheckboxListTile(
                   title: Text(habit.name),
-                  value: isSelected,
-                  onChanged: (bool? value) {
-                    _toggleHabitSelection(habit);
-                  },
+                  value: _isHabitSelected(habit),
+                  onChanged: (bool? value) => _toggleHabitSelection(habit),
                   controlAffinity: ListTileControlAffinity.leading,
                 );
               },

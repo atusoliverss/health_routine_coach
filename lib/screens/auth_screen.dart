@@ -1,10 +1,13 @@
 // lib/screens/auth_screen.dart
+
+// --- IMPORTAÇÕES ---
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:health_routine_coach/screens/home_screen.dart';
-// NOVO: Importe a tela de redefinição de senha
-import 'package:health_routine_coach/screens/auth/forgot_password_screen.dart'; // Ajuste o caminho se necessário
+import 'package:health_routine_coach/screens/auth/forgot_password_screen.dart';
 
+// --- WIDGET PRINCIPAL DA TELA DE AUTENTICAÇÃO ---
 class AuthScreen extends StatefulWidget {
   const AuthScreen({super.key});
 
@@ -12,17 +15,19 @@ class AuthScreen extends StatefulWidget {
   State<AuthScreen> createState() => _AuthScreenState();
 }
 
+// --- CLASSE DE ESTADO DA AUTHSCREEN ---
 class _AuthScreenState extends State<AuthScreen> {
+  // --- ESTADO DO WIDGET ---
   bool _isLoginMode = true;
   bool _isPasswordVisible = false;
+  bool _isLoading = false;
+  String? _errorMessage;
 
+  // --- CONTROLADORES ---
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
   final _nameController = TextEditingController();
-
-  bool _isLoading = false;
-  String? _errorMessage;
 
   @override
   void dispose() {
@@ -33,6 +38,9 @@ class _AuthScreenState extends State<AuthScreen> {
     super.dispose();
   }
 
+  // --- LÓGICA DE NEGÓCIO ---
+
+  /// Alterna a UI entre os modos de login e cadastro.
   void _toggleAuthMode() {
     setState(() {
       _isLoginMode = !_isLoginMode;
@@ -45,25 +53,25 @@ class _AuthScreenState extends State<AuthScreen> {
     });
   }
 
+  /// Processa o envio do formulário, valida e chama o Firebase.
   Future<void> _submitAuthForm() async {
-    if (_emailController.text.trim().isEmpty || _passwordController.text.trim().isEmpty) {
-      setState(() {
-        _errorMessage = 'Por favor, preencha todos os campos obrigatórios.';
-      });
+    // Validações...
+    if (_emailController.text.trim().isEmpty ||
+        _passwordController.text.trim().isEmpty) {
+      setState(
+        () =>
+            _errorMessage = 'Por favor, preencha todos os campos obrigatórios.',
+      );
       return;
     }
-
     if (!_isLoginMode && _nameController.text.trim().isEmpty) {
-       setState(() {
-        _errorMessage = 'Por favor, insira seu nome completo.';
-      });
+      setState(() => _errorMessage = 'Por favor, insira seu nome completo.');
       return;
     }
-
-    if (!_isLoginMode && _passwordController.text.trim() != _confirmPasswordController.text.trim()) {
-      setState(() {
-        _errorMessage = 'As senhas não coincidem.';
-      });
+    if (!_isLoginMode &&
+        _passwordController.text.trim() !=
+            _confirmPasswordController.text.trim()) {
+      setState(() => _errorMessage = 'As senhas não coincidem.');
       return;
     }
 
@@ -74,53 +82,126 @@ class _AuthScreenState extends State<AuthScreen> {
 
     try {
       if (_isLoginMode) {
+        // Lógica de Login
         await FirebaseAuth.instance.signInWithEmailAndPassword(
           email: _emailController.text.trim(),
           password: _passwordController.text.trim(),
         );
       } else {
-        UserCredential userCredential = await FirebaseAuth.instance.createUserWithEmailAndPassword(
-          email: _emailController.text.trim(),
-          password: _passwordController.text.trim(),
+        // Lógica de Cadastro
+        UserCredential userCredential = await FirebaseAuth.instance
+            .createUserWithEmailAndPassword(
+              email: _emailController.text.trim(),
+              password: _passwordController.text.trim(),
+            );
+        await userCredential.user?.updateDisplayName(
+          _nameController.text.trim(),
         );
-        await userCredential.user?.updateDisplayName(_nameController.text.trim());
+        await FirebaseFirestore.instance
+            .collection('users')
+            .doc(userCredential.user!.uid)
+            .set({
+              'name': _nameController.text.trim(),
+              'email': _emailController.text.trim(),
+              'createdAt': Timestamp.now(),
+              'currentStreak': 0,
+            });
       }
+
+      // Navega para a HomeScreen com uma transição de Fade.
       if (mounted) {
         Navigator.of(context).pushReplacement(
           PageRouteBuilder(
-            pageBuilder: (context, animation, secondaryAnimation) => const HomeScreen(),
-            transitionsBuilder: (context, animation, secondaryAnimation, child) {
-              return FadeTransition(opacity: animation, child: child);
-            },
+            pageBuilder: (context, animation, secondaryAnimation) =>
+                const HomeScreen(),
+            transitionsBuilder:
+                (context, animation, secondaryAnimation, child) {
+                  return FadeTransition(opacity: animation, child: child);
+                },
             transitionDuration: const Duration(milliseconds: 700),
           ),
         );
       }
     } on FirebaseAuthException catch (e) {
       String message = 'Ocorreu um erro. Por favor, tente novamente.';
-      if (e.code == 'weak-password') {
+      if (e.code == 'weak-password')
         message = 'A senha fornecida é muito fraca.';
-      } else if (e.code == 'email-already-in-use') {
+      else if (e.code == 'email-already-in-use')
         message = 'Este e-mail já está em uso.';
-      } else if (e.code == 'user-not-found' || e.code == 'wrong-password') {
-        message = 'Credenciais inválidas. Verifique seu e-mail e senha.';
-      } else if (e.code == 'invalid-email') {
+      else if (e.code == 'user-not-found' || e.code == 'wrong-password')
+        message = 'Credenciais inválidas.';
+      else if (e.code == 'invalid-email')
         message = 'O formato do e-mail é inválido.';
-      }
-      setState(() {
-        _errorMessage = message;
-      });
+      setState(() => _errorMessage = message);
     } catch (e) {
-      setState(() {
-        _errorMessage = 'Ocorreu um erro inesperado: $e';
-      });
+      setState(() => _errorMessage = 'Ocorreu um erro inesperado: $e');
     } finally {
-      setState(() {
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
     }
   }
 
+  // --- MÉTODOS DE CONSTRUÇÃO DE WIDGETS (REUTILIZÁVEIS) ---
+
+  Widget _buildTextField({
+    required TextEditingController controller,
+    required String hintText,
+    TextInputType keyboardType = TextInputType.text,
+  }) {
+    return TextField(
+      controller: controller,
+      textAlign: TextAlign.center,
+      cursorColor: Colors.black,
+      decoration: InputDecoration(
+        hintText: hintText,
+        hintStyle: const TextStyle(color: Colors.grey),
+        border: const UnderlineInputBorder(),
+        focusedBorder: const UnderlineInputBorder(
+          borderSide: BorderSide(color: Colors.black),
+        ),
+      ),
+      keyboardType: keyboardType,
+    );
+  }
+
+  Widget _buildPasswordField({
+    required TextEditingController controller,
+    required String hintText,
+  }) {
+    return Stack(
+      alignment: Alignment.centerRight,
+      children: <Widget>[
+        TextField(
+          controller: controller,
+          textAlign: TextAlign.center,
+          cursorColor: Colors.black,
+          decoration: InputDecoration(
+            hintText: hintText,
+            hintStyle: const TextStyle(color: Colors.grey),
+            border: const UnderlineInputBorder(),
+            focusedBorder: const UnderlineInputBorder(
+              borderSide: BorderSide(color: Colors.black),
+            ),
+          ),
+          obscureText: !_isPasswordVisible,
+        ),
+        IconButton(
+          icon: Icon(
+            _isPasswordVisible ? Icons.visibility : Icons.visibility_off,
+            color: Colors.grey,
+          ),
+          onPressed: () {
+            setState(() {
+              _isPasswordVisible = !_isPasswordVisible;
+            });
+          },
+        ),
+      ],
+    );
+  }
+
+  // --- MÉTODO PRINCIPAL DE CONSTRUÇÃO DA UI ---
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -132,15 +213,15 @@ class _AuthScreenState extends State<AuthScreen> {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               const Image(
-                image: AssetImage('assets/images/logo-hrc.png'), // Certifique-se de que o caminho está correto
-                width: 100, // Ajustado para 100 para ser mais compacto
-                height: 100, // Ajustado para 100 para ser mais compacto
+                image: AssetImage('assets/images/logo-hrc.png'),
+                width: 200,
+                height: 200,
               ),
               const SizedBox(height: 32),
               Text(
                 _isLoginMode ? 'Acesse sua conta' : 'Crie sua conta',
                 style: const TextStyle(
-                  fontSize: 28, // Ajustado para 28 para ser mais compacto
+                  fontSize: 28,
                   fontWeight: FontWeight.bold,
                   color: Colors.black87,
                 ),
@@ -150,116 +231,67 @@ class _AuthScreenState extends State<AuthScreen> {
               Text(
                 _isLoginMode
                     ? 'Bem-vindo ao seu melhor treinador'
-                    : 'Crie sua conta para começar sua jornada com o "melhor coach"!!',
-                style: const TextStyle(
-                  fontSize: 16,
-                  color: Colors.grey,
-                ),
+                    : 'Crie sua conta para começar sua jornada!',
+                style: const TextStyle(fontSize: 16, color: Colors.grey),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 32),
-              if (!_isLoginMode) ...[
-                TextField(
-                  controller: _nameController,
-                  textAlign: TextAlign.center,
-                  decoration: InputDecoration(
-                    hintText: 'Nome Completo',
-                    hintStyle: TextStyle(
-                      color: Theme.of(context).hintColor,
-                      fontSize: 18, // Ajustado para ser mais compacto
-                      fontWeight: FontWeight.w300,
-                    ),
-                    floatingLabelBehavior: FloatingLabelBehavior.never,
-                    border: const UnderlineInputBorder(),
-                  ),
-                  keyboardType: TextInputType.text,
-                ),
-                const SizedBox(height: 24),
-              ],
-              TextField(
+
+              // ANIMAÇÃO PARA O CAMPO DE NOME
+              AnimatedSwitcher(
+                duration: const Duration(milliseconds: 400),
+                // ALTERAÇÃO: A transição agora é apenas um Fade, igual à da SplashScreen.
+                transitionBuilder: (Widget child, Animation<double> animation) {
+                  return FadeTransition(opacity: animation, child: child);
+                },
+                child: !_isLoginMode
+                    ? Column(
+                        key: const ValueKey('name_field'),
+                        children: [
+                          _buildTextField(
+                            controller: _nameController,
+                            hintText: 'Nome Completo',
+                          ),
+                          const SizedBox(height: 24),
+                        ],
+                      )
+                    : const SizedBox(key: ValueKey('empty_name')),
+              ),
+
+              _buildTextField(
                 controller: _emailController,
-                textAlign: TextAlign.center,
-                decoration: InputDecoration(
-                  hintText: 'Email',
-                  hintStyle: TextStyle(
-                    color: Theme.of(context).hintColor,
-                    fontSize: 18, // Ajustado para ser mais compacto
-                    fontWeight: FontWeight.w300,
-                  ),
-                  floatingLabelBehavior: FloatingLabelBehavior.never,
-                  border: const UnderlineInputBorder(),
-                ),
+                hintText: 'Email',
                 keyboardType: TextInputType.emailAddress,
               ),
               const SizedBox(height: 24),
-              TextField(
+              _buildPasswordField(
                 controller: _passwordController,
-                textAlign: TextAlign.center,
-                decoration: InputDecoration(
-                  hintText: 'Senha',
-                  hintStyle: TextStyle(
-                    color: Theme.of(context).hintColor,
-                    fontSize: 18, // Ajustado para ser mais compacto
-                    fontWeight: FontWeight.w300,
-                  ),
-                  floatingLabelBehavior: FloatingLabelBehavior.never,
-                  border: const UnderlineInputBorder(),
-                  suffixIcon: IconButton(
-                    icon: Icon(
-                      _isPasswordVisible ? Icons.visibility : Icons.visibility_off,
-                      color: Colors.grey,
-                    ),
-                    onPressed: () {
-                      setState(() {
-                        _isPasswordVisible = !_isPasswordVisible;
-                      });
-                    },
-                  ),
-                  contentPadding: const EdgeInsets.fromLTRB(
-                    30.0, // Ajustado para ser mais compacto
-                    16.0,
-                    0.0,
-                    16.0,
-                  ),
-                ),
-                obscureText: !_isPasswordVisible,
+                hintText: 'Senha',
               ),
-              if (!_isLoginMode) ...[
-                const SizedBox(height: 24),
-                TextField(
-                  controller: _confirmPasswordController,
-                  textAlign: TextAlign.center,
-                  decoration: InputDecoration(
-                    hintText: 'Confirme a sua senha',
-                    hintStyle: TextStyle(
-                      color: Theme.of(context).hintColor,
-                      fontSize: 18, // Ajustado para ser mais compacto
-                      fontWeight: FontWeight.w300,
-                    ),
-                    floatingLabelBehavior: FloatingLabelBehavior.never,
-                    border: const UnderlineInputBorder(),
-                    suffixIcon: IconButton(
-                      icon: Icon(
-                        _isPasswordVisible ? Icons.visibility : Icons.visibility_off,
-                        color: Colors.grey,
-                      ),
-                      onPressed: () {
-                        setState(() {
-                          _isPasswordVisible = !_isPasswordVisible;
-                        });
-                      },
-                    ),
-                    contentPadding: const EdgeInsets.fromLTRB(
-                      30.0, // Ajustado para ser mais compacto
-                      16.0,
-                      0.0,
-                      16.0,
-                    ),
-                  ),
-                  obscureText: !_isPasswordVisible,
-                ),
-              ],
+
+              // ANIMAÇÃO PARA O CAMPO DE CONFIRMAÇÃO DE SENHA
+              AnimatedSwitcher(
+                duration: const Duration(milliseconds: 400),
+                // ALTERAÇÃO: A transição agora é apenas um Fade.
+                transitionBuilder: (Widget child, Animation<double> animation) {
+                  return FadeTransition(opacity: animation, child: child);
+                },
+                child: !_isLoginMode
+                    ? Column(
+                        key: const ValueKey('confirm_password_field'),
+                        children: [
+                          const SizedBox(height: 24),
+                          _buildPasswordField(
+                            controller: _confirmPasswordController,
+                            hintText: 'Confirme a sua senha',
+                          ),
+                        ],
+                      )
+                    : const SizedBox(key: ValueKey('empty_confirm_password')),
+              ),
+
               const SizedBox(height: 32),
+
               if (_errorMessage != null)
                 Padding(
                   padding: const EdgeInsets.only(bottom: 16.0),
@@ -275,39 +307,42 @@ class _AuthScreenState extends State<AuthScreen> {
                       onPressed: _submitAuthForm,
                       style: ElevatedButton.styleFrom(
                         minimumSize: const Size.fromHeight(50),
+                        backgroundColor: Color(0xFF03A9F4),
                       ),
                       child: Text(
                         _isLoginMode ? 'Entrar' : 'Criar conta',
-                        style: const TextStyle(fontSize: 18), // Ajustado para ser mais compacto
+                        style: const TextStyle(
+                          fontSize: 18,
+                          color: Color(0xFFFFFFFF),
+                        ),
                       ),
                     ),
-              const SizedBox(height: 24),
-              // NOVO: Link "Esqueceu a senha?"
-              if (_isLoginMode) // Apenas no modo de login
+              const SizedBox(height: 16),
+
+              if (_isLoginMode)
                 TextButton(
-                  onPressed: () {
-                    // Lógica de navegação para a tela de redefinição de senha
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (context) => const ForgotPasswordScreen(),
-                      ),
-                    );
-                  },
+                  onPressed: () => Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (context) => const ForgotPasswordScreen(),
+                    ),
+                  ),
                   child: const Text(
-                    'Esqueceu sua senha?',
+                    'Esquecer a senha?',
                     style: TextStyle(
                       fontSize: 16,
-                      color: Colors.black54, // Cor mais neutra para este link
+                      color: Colors.black54,
                       fontWeight: FontWeight.normal,
                     ),
                   ),
                 ),
-              const SizedBox(height: 16), // Espaçamento adicional se o link de senha estiver presente
+              const SizedBox(height: 8),
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Text(
-                    _isLoginMode ? 'Ainda sem conta?' : 'Já possui uma conta?',
+                    _isLoginMode
+                        ? 'Ainda não tem conta?'
+                        : 'Já possui uma conta?',
                     style: const TextStyle(fontSize: 16, color: Colors.black87),
                   ),
                   TextButton(
@@ -316,7 +351,7 @@ class _AuthScreenState extends State<AuthScreen> {
                       _isLoginMode ? 'Criar conta' : 'Entrar',
                       style: TextStyle(
                         fontSize: 16,
-                        color: Theme.of(context).primaryColor,
+                        color: Color(0xFF03A9F4),
                         fontWeight: FontWeight.bold,
                       ),
                     ),
