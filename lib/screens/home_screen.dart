@@ -3,10 +3,11 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:intl/intl.dart';
 
-// Importe todas as telas que serão exibidas na navegação
 import 'package:health_routine_coach/screens/habitos/habitos_screen.dart';
 import 'package:health_routine_coach/screens/metas/metas_screen.dart';
 import 'package:health_routine_coach/screens/rotinas/rotinas_screen.dart';
+// NOVO: Importe a tela de usuário
+import 'package:health_routine_coach/screens/user_screen.dart';
 
 // Este arquivo agora gerencia toda a navegação principal do app
 class HomeScreen extends StatefulWidget {
@@ -17,8 +18,7 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  int _selectedIndex =
-      0; // Controla o índice do item selecionado na navegação inferior
+  int _selectedIndex = 0; // Controla o índice do item selecionado na navegação inferior
 
   // Conteúdo de cada aba
   static final List<Widget> _widgetOptions = <Widget>[
@@ -57,11 +57,17 @@ class _HomeScreenState extends State<HomeScreen> {
           _getCurrentTitle(),
           style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
         ),
-        actions: const [
-          Padding(
-            padding: EdgeInsets.only(right: 16.0),
-            child: Icon(Icons.account_circle, size: 30),
+        actions: [
+          // AÇÃO ADICIONADA AQUI: Ao clicar no ícone de perfil, navega para a UserScreen
+          IconButton(
+            icon: const Icon(Icons.account_circle, size: 30),
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(builder: (context) => const UserScreen()),
+              );
+            },
           ),
+          const SizedBox(width: 8), // Espaçamento
         ],
       ),
       body: _widgetOptions.elementAt(_selectedIndex),
@@ -89,20 +95,17 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ],
         currentIndex: _selectedIndex,
-        selectedItemColor: const Color(
-          0xFF03A9F4,
-        ), // Cor azul para o item selecionado
+        selectedItemColor: const Color(0xFF03A9F4),
         unselectedItemColor: Colors.grey,
         onTap: _onItemTapped,
-        type: BottomNavigationBarType
-            .fixed, // Para garantir que todos os itens fiquem visíveis
+        type: BottomNavigationBarType.fixed,
       ),
     );
   }
 }
 
+
 // --- Conteúdo da Aba HOME (Agora um widget separado) ---
-// Este widget contém apenas a UI da tela HOME em si
 class _HomeTabContent extends StatefulWidget {
   const _HomeTabContent({Key? key}) : super(key: key);
 
@@ -111,10 +114,10 @@ class _HomeTabContent extends StatefulWidget {
 }
 
 class _HomeTabContentState extends State<_HomeTabContent> {
-  // Dados simulados para a home screen
   double dailyProgress = 0.60;
   int completedHabits = 3;
   int totalHabits = 5;
+  int currentStreak = 7;
 
   List<HomeHabit> todayHabits = [
     HomeHabit(name: 'Beber 2L de água', isCompleted: true),
@@ -131,9 +134,8 @@ class _HomeTabContentState extends State<_HomeTabContent> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Card de Progresso Diário (Layout Compacto)
           Card(
-            color: const Color(0xFFE0E0E0), // Cor cinza claro para o card
+            color: const Color(0xFFE0E0E0),
             child: Padding(
               padding: const EdgeInsets.all(16.0),
               child: Column(
@@ -141,16 +143,11 @@ class _HomeTabContentState extends State<_HomeTabContent> {
                 children: [
                   Text(
                     'Seu Progresso Hoje',
-                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    DateFormat(
-                      'EEEE, dd \'de\' MMMM \'de\' yyyy',
-                      'pt_BR',
-                    ).format(DateTime.now()),
+                    DateFormat('EEEE, dd \'de\' MMMM \'de\' yyyy', 'pt_BR').format(DateTime.now()),
                     style: const TextStyle(fontSize: 14, color: Colors.black54),
                   ),
                   const SizedBox(height: 12),
@@ -169,21 +166,26 @@ class _HomeTabContentState extends State<_HomeTabContent> {
                   const SizedBox(height: 4),
                   const Text(
                     'Continue assim! Quase lá!',
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontStyle: FontStyle.italic,
-                      color: Colors.black87,
-                    ),
+                    style: TextStyle(fontSize: 14, fontStyle: FontStyle.italic, color: Colors.black87),
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      const Icon(Icons.local_fire_department, color: Colors.orange, size: 20),
+                      const SizedBox(width: 4),
+                      Text(
+                        'Sua maior sequência de dias saudáveis: $currentStreak dias!',
+                        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+                      ),
+                    ],
                   ),
                 ],
               ),
             ),
           ),
           const SizedBox(height: 20),
-
-          // Card de Hábitos de Hoje (Compacto)
           Card(
-            color: const Color(0xFFE0E0E0), // Cor cinza claro para o card
+            color: const Color(0xFFE0E0E0),
             child: Padding(
               padding: const EdgeInsets.all(16.0),
               child: Column(
@@ -191,9 +193,7 @@ class _HomeTabContentState extends State<_HomeTabContent> {
                 children: [
                   Text(
                     'Hábitos de Hoje',
-                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 10),
                   ListView.builder(
@@ -206,32 +206,22 @@ class _HomeTabContentState extends State<_HomeTabContent> {
                         title: Text(
                           habit.name,
                           style: TextStyle(
-                            decoration: habit.isCompleted
-                                ? TextDecoration.lineThrough
-                                : null,
-                            color: habit.isCompleted
-                                ? Colors.black54
-                                : Colors.black87,
+                            decoration: habit.isCompleted ? TextDecoration.lineThrough : null,
+                            color: habit.isCompleted ? Colors.black54 : Colors.black87,
                           ),
                         ),
                         value: habit.isCompleted,
                         onChanged: (bool? newValue) {
                           setState(() {
                             habit.isCompleted = newValue!;
-                            completedHabits = todayHabits
-                                .where((h) => h.isCompleted)
-                                .length;
+                            completedHabits = todayHabits.where((h) => h.isCompleted).length;
                             totalHabits = todayHabits.length;
-                            dailyProgress = totalHabits > 0
-                                ? completedHabits / totalHabits
-                                : 0.0;
+                            dailyProgress = totalHabits > 0 ? completedHabits / totalHabits : 0.0;
                           });
                         },
                         controlAffinity: ListTileControlAffinity.leading,
                         checkColor: Colors.white,
-                        activeColor: const Color(
-                          0xFF12855B,
-                        ), // Cor verde do checkmark
+                        activeColor: const Color(0xFF12855B),
                       );
                     },
                   ),
@@ -240,10 +230,8 @@ class _HomeTabContentState extends State<_HomeTabContent> {
             ),
           ),
           const SizedBox(height: 20),
-
-          // Card de Inspiração do Dia
           Card(
-            color: const Color(0xFFE0E0E0), // Cor cinza claro para o card
+            color: const Color(0xFFE0E0E0),
             child: Padding(
               padding: const EdgeInsets.all(16.0),
               child: Column(
@@ -251,18 +239,12 @@ class _HomeTabContentState extends State<_HomeTabContent> {
                 children: [
                   Text(
                     'Inspiração do Dia',
-                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 10),
                   const Text(
                     "\"O caminho para a saúde começa com um único passo.\"",
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontStyle: FontStyle.italic,
-                      color: Colors.black87,
-                    ),
+                    style: TextStyle(fontSize: 16, fontStyle: FontStyle.italic, color: Colors.black87),
                   ),
                 ],
               ),
@@ -274,7 +256,6 @@ class _HomeTabContentState extends State<_HomeTabContent> {
   }
 }
 
-// Dados de exemplo, para a HomeTabContent usar
 class HomeHabit {
   final String name;
   bool isCompleted;
