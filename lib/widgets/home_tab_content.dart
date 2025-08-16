@@ -5,8 +5,6 @@ import 'package:intl/intl.dart';
 import '../models/home_models.dart';
 import '../services/firestore_service.dart';
 
-/// Este widget exibe o conteúdo da aba "HOME".
-/// Ele é um componente da HomeScreen e vive na pasta de widgets.
 class HomeTabContent extends StatefulWidget {
   final List<HomeHabit> todayHabits;
   final int currentStreak;
@@ -72,6 +70,10 @@ class _HomeTabContentState extends State<HomeTabContent> {
           // Card de Progresso
           Card(
             color: const Color(0xFFE0E0E0),
+            elevation: 0,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
             child: Padding(
               padding: const EdgeInsets.all(16.0),
               child: Column(
@@ -140,6 +142,10 @@ class _HomeTabContentState extends State<HomeTabContent> {
           // Card de Hábitos
           Card(
             color: const Color(0xFFE0E0E0),
+            elevation: 0,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
             child: Padding(
               padding: const EdgeInsets.all(16.0),
               child: Column(
@@ -159,7 +165,7 @@ class _HomeTabContentState extends State<HomeTabContent> {
                         child: Text(
                           'Nenhum hábito agendado para hoje!',
                           textAlign: TextAlign.center,
-                          style: TextStyle(fontSize: 16, color: Colors.black54),
+                          style: TextStyle(fontSize: 16, color: Colors.grey),
                         ),
                       ),
                     )
@@ -207,7 +213,14 @@ class _HomeTabContentState extends State<HomeTabContent> {
           // Card de Inspiração
           Card(
             color: const Color(0xFFE0E0E0),
-            child: Padding(
+            elevation: 0,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+            // CORREÇÃO: Envolvemos o conteúdo com um Container para garantir a largura total
+            // e um SizedBox para garantir uma altura mínima.
+            child: Container(
+              width: double.infinity, // Garante que o card ocupe toda a largura
               padding: const EdgeInsets.all(16.0),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -227,6 +240,8 @@ class _HomeTabContentState extends State<HomeTabContent> {
                       color: Colors.black87,
                     ),
                   ),
+                  // Adiciona um espaço extra para aumentar a altura do card se o texto for curto.
+                  const SizedBox(height: 20),
                 ],
               ),
             ),
