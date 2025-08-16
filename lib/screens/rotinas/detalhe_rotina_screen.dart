@@ -5,6 +5,7 @@ import 'package:health_routine_coach/models/habito.dart';
 import 'package:health_routine_coach/models/rotina.dart';
 import 'package:health_routine_coach/services/firestore_service.dart';
 import 'package:health_routine_coach/screens/rotinas/add_edit_rotina_screen.dart';
+import 'package:health_routine_coach/widgets/custom_app_bar.dart';
 
 class DetalheRotinaScreen extends StatefulWidget {
   final Rotina rotina;
@@ -19,12 +20,14 @@ class _DetalheRotinaScreenState extends State<DetalheRotinaScreen> {
   final FirestoreService _firestoreService = FirestoreService();
   late Rotina _currentRotina;
   late Future<List<Habito>> _habitsInRoutineFuture;
+  late Future<String> _userNameFuture;
 
   @override
   void initState() {
     super.initState();
     _currentRotina = widget.rotina;
     _loadHabitDetails();
+    _userNameFuture = _firestoreService.getUserName();
   }
 
   void _loadHabitDetails() {
@@ -59,18 +62,62 @@ class _DetalheRotinaScreenState extends State<DetalheRotinaScreen> {
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: const Text('EXCLUIR ROTINA?'),
-          content: Text(
-            'Você tem certeza que deseja excluir a rotina "${_currentRotina.name}"? Esta ação não poderá ser desfeita.',
+          backgroundColor: Colors.grey[300],
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
           ),
-          actions: <Widget>[
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(false),
-              child: const Text('CANCELAR'),
+          title: const Center(
+            child: Text(
+              'EXCLUIR ROTINA?',
+              style: TextStyle(fontWeight: FontWeight.bold),
             ),
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(true),
-              child: const Text('EXCLUIR', style: TextStyle(color: Colors.red)),
+          ),
+          content: Text(
+            'Você tem certeza que deseja excluir a rotina "${_currentRotina.name}"?\nEsta ação não poderá ser desfeita.',
+            textAlign: TextAlign.center,
+          ),
+          actionsAlignment: MainAxisAlignment.center,
+          actionsPadding: const EdgeInsets.only(
+            bottom: 20.0,
+            left: 20,
+            right: 20,
+          ),
+          // CORREÇÃO: Os botões agora estão envolvidos por um Row.
+          actions: <Widget>[
+            Row(
+              children: [
+                Expanded(
+                  child: ElevatedButton.icon(
+                    onPressed: () => Navigator.of(context).pop(false),
+                    icon: const Icon(Icons.cancel_outlined),
+                    label: const Text('CANCELAR'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF03A9F4),
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: ElevatedButton.icon(
+                    onPressed: () => Navigator.of(context).pop(true),
+                    icon: const Icon(Icons.delete_outline),
+                    label: const Text('EXCLUIR'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.red,
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                    ),
+                  ),
+                ),
+              ],
             ),
           ],
         );
@@ -87,155 +134,197 @@ class _DetalheRotinaScreenState extends State<DetalheRotinaScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: Text(_currentRotina.name)),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'DETALHE DA ROTINA',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-                color: Colors.grey,
-              ),
-            ),
-            const Divider(height: 10, thickness: 1),
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
+    return FutureBuilder<String>(
+      future: _userNameFuture,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Scaffold(
+            body: Center(child: CircularProgressIndicator()),
+          );
+        }
+
+        final userName = snapshot.data ?? 'Usuário';
+
+        return Scaffold(
+          appBar: CustomAppBar(userName: userName),
+          body: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
                   children: [
-                    Text(
-                      'Título da rotina: ${_currentRotina.name}',
-                      style: const TextStyle(fontSize: 16),
-                    ),
-                    const SizedBox(height: 8),
-                    if (_currentRotina.description != null &&
-                        _currentRotina.description!.isNotEmpty)
-                      Text(
-                        'Descrição: ${_currentRotina.description}',
-                        style: const TextStyle(fontSize: 16),
+                    CircleAvatar(
+                      backgroundColor: const Color(0xFF03A9F4),
+                      child: IconButton(
+                        icon: const Icon(Icons.arrow_back, color: Colors.white),
+                        onPressed: () => Navigator.of(context).pop(),
                       ),
-                    if (_currentRotina.description != null &&
-                        _currentRotina.description!.isNotEmpty)
-                      const SizedBox(height: 8),
-                    Text(
-                      'Ativa em: ${_formatActiveDays(_currentRotina.activeDays)}',
-                      style: const TextStyle(fontSize: 16),
                     ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'Total de Hábitos: ${_currentRotina.habitIds.length}',
-                      style: const TextStyle(fontSize: 16),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Text(
+                        _currentRotina.name,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 28,
+                          color: Colors.black87,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     ),
                   ],
                 ),
-              ),
-            ),
-            const SizedBox(height: 20),
-            const Text(
-              'HÁBITOS DA ROTINA',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-                color: Colors.grey,
-              ),
-            ),
-            const Divider(height: 10, thickness: 1),
-            Expanded(
-              child: FutureBuilder<List<Habito>>(
-                future: _habitsInRoutineFuture,
-                builder: (context, snapshot) {
-                  if (snapshot.connectionState == ConnectionState.waiting) {
-                    return const Center(child: CircularProgressIndicator());
-                  }
-                  if (snapshot.hasError) {
-                    return Center(
-                      child: Text(
-                        'Erro ao carregar hábitos: ${snapshot.error}',
-                      ),
-                    );
-                  }
-                  if (!snapshot.hasData || snapshot.data!.isEmpty) {
-                    return const Center(
-                      child: Text(
-                        'Nenhum hábito associado a esta rotina.',
-                        style: TextStyle(fontSize: 16, color: Colors.grey),
-                      ),
-                    );
-                  }
-
-                  final habitsInRoutine = snapshot.data!;
-                  return Card(
-                    child: ListView.builder(
-                      itemCount: habitsInRoutine.length,
-                      itemBuilder: (context, index) {
-                        final habit = habitsInRoutine[index];
-                        return ListTile(
-                          leading: Icon(
-                            Icons.check_circle_outline,
-                            color: Theme.of(context).primaryColor,
-                          ),
-                          title: Text(
-                            habit.name,
-                            style: const TextStyle(fontSize: 16),
-                          ),
-                        );
-                      },
-                    ),
-                  );
-                },
-              ),
-            ),
-            const SizedBox(height: 20),
-            Row(
-              children: [
-                Expanded(
-                  child: ElevatedButton.icon(
-                    onPressed: _confirmDelete,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.red,
-                      foregroundColor: Colors.white,
-                    ),
-                    icon: const Icon(Icons.delete),
-                    label: const Text('EXCLUIR'),
+                const SizedBox(height: 24),
+                const Text(
+                  'DETALHE DA ROTINA',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.grey,
                   ),
                 ),
-                const SizedBox(width: 16),
+                const SizedBox(height: 8),
+                Card(
+                  color: Colors.grey[200],
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Text(
+                          'Título da rotina: ${_currentRotina.name}',
+                          style: const TextStyle(fontSize: 16),
+                        ),
+                        const SizedBox(height: 8),
+                        if (_currentRotina.description != null &&
+                            _currentRotina.description!.isNotEmpty)
+                          Text(
+                            'Descrição: ${_currentRotina.description}',
+                            style: const TextStyle(fontSize: 16),
+                          ),
+                        if (_currentRotina.description != null &&
+                            _currentRotina.description!.isNotEmpty)
+                          const SizedBox(height: 8),
+                        Text(
+                          'Ativa em: ${_formatActiveDays(_currentRotina.activeDays)}',
+                          style: const TextStyle(fontSize: 16),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'Total de Hábitos: ${_currentRotina.habitIds.length}',
+                          style: const TextStyle(fontSize: 16),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 24),
+                const Text(
+                  'HÁBITOS DA ROTINA',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.grey,
+                  ),
+                ),
+                const SizedBox(height: 8),
                 Expanded(
-                  child: ElevatedButton.icon(
-                    onPressed: () async {
-                      await Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (context) =>
-                              AddEditRotinaScreen(rotina: _currentRotina),
+                  child: FutureBuilder<List<Habito>>(
+                    future: _habitsInRoutineFuture,
+                    builder: (context, snapshot) {
+                      if (snapshot.connectionState == ConnectionState.waiting) {
+                        return const Center(child: CircularProgressIndicator());
+                      }
+                      if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                        return const Center(
+                          child: Text(
+                            'Nenhum hábito associado.',
+                            style: TextStyle(fontSize: 16, color: Colors.grey),
+                          ),
+                        );
+                      }
+
+                      final habitsInRoutine = snapshot.data!;
+                      return Card(
+                        color: Colors.grey[200],
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: ListView.builder(
+                          padding: const EdgeInsets.all(16),
+                          itemCount: habitsInRoutine.length,
+                          itemBuilder: (context, index) {
+                            final habit = habitsInRoutine[index];
+                            return Padding(
+                              padding: const EdgeInsets.symmetric(
+                                vertical: 4.0,
+                              ),
+                              child: Text(
+                                '• ${habit.name}',
+                                style: const TextStyle(fontSize: 16),
+                              ),
+                            );
+                          },
                         ),
                       );
-                      // Após voltar da edição, recarrega a tela de detalhes para refletir as mudanças.
-                      // Isso é importante caso o nome da rotina ou os hábitos tenham mudado.
-                      if (mounted) {
-                        // Uma forma simples de recarregar é buscar a rotina atualizada do Firestore,
-                        // mas por enquanto, vamos apenas recarregar os detalhes dos hábitos.
-                        _loadHabitDetails();
-                      }
                     },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF03A9F4),
-                      foregroundColor: Colors.white,
-                    ),
-                    icon: const Icon(Icons.edit),
-                    label: const Text('EDITAR'),
                   ),
+                ),
+                const SizedBox(height: 24),
+                Row(
+                  children: [
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        onPressed: _confirmDelete,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.red,
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                        ),
+                        icon: const Icon(Icons.delete_outline),
+                        label: const Text('EXCLUIR ROTINA'),
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        onPressed: () async {
+                          await Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (context) =>
+                                  AddEditRotinaScreen(rotina: _currentRotina),
+                            ),
+                          );
+                          _loadHabitDetails();
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF03A9F4),
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                        ),
+                        icon: const Icon(Icons.edit_outlined),
+                        label: const Text('EDITAR ROTINA'),
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
-          ],
-        ),
-      ),
+          ),
+        );
+      },
     );
   }
 }

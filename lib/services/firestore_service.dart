@@ -1,3 +1,5 @@
+// lib/services/firestore_service.dart
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:intl/intl.dart';
@@ -11,6 +13,22 @@ class FirestoreService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
 
   String? get _uid => _auth.currentUser?.uid;
+
+  // --- MÉTODO PARA BUSCAR APENAS O NOME DO USUÁRIO ---
+  /// Busca apenas o nome do usuário logado no Firestore.
+  Future<String> getUserName() async {
+    if (_uid == null) return 'Usuário';
+    try {
+      final userDoc = await _db.collection('users').doc(_uid).get();
+      // Retorna o nome do documento ou o displayName do Auth como fallback.
+      return userDoc.data()?['name'] ??
+          _auth.currentUser?.displayName ??
+          'Usuário';
+    } catch (e) {
+      // Em caso de erro, usa o displayName do Auth como fallback final.
+      return _auth.currentUser?.displayName ?? 'Usuário';
+    }
+  }
 
   // --- MÉTODOS DA HOME SCREEN ---
   Future<HomeScreenData> fetchDataForHomeScreen() async {
@@ -31,7 +49,7 @@ class FirestoreService {
 
       final habitsSnapshot = await userDocRef
           .collection('habits')
-          .where('specificDays', arrayContains: todayDayOfWeek)
+          .where('daysOfWeek', arrayContains: todayDayOfWeek)
           .get();
 
       final String todayDateKey = DateFormat(

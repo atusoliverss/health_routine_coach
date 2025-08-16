@@ -25,6 +25,7 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
     return Container(
       color: const Color(0xFFF5F5F5), // Cor de fundo da AppBar.
       // SafeArea garante que o conteúdo não fique sob entalhes ou a barra de status do sistema.
+      margin: EdgeInsets.fromLTRB(8, 8, 8, 12),
       child: SafeArea(
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16.0),
