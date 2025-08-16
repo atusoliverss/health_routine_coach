@@ -245,7 +245,7 @@ class _AddEditRotinaScreenState extends State<AddEditRotinaScreen> {
                     key: _formKey,
                     child: Card(
                       color: Colors.grey[200],
-                      elevation: 0,
+                      elevation: 3,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12),
                       ),

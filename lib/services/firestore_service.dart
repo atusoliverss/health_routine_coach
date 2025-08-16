@@ -1,5 +1,3 @@
-// lib/services/firestore_service.dart
-
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:intl/intl.dart';
@@ -14,23 +12,18 @@ class FirestoreService {
 
   String? get _uid => _auth.currentUser?.uid;
 
-  // --- MÉTODO PARA BUSCAR APENAS O NOME DO USUÁRIO ---
-  /// Busca apenas o nome do usuário logado no Firestore.
   Future<String> getUserName() async {
     if (_uid == null) return 'Usuário';
     try {
       final userDoc = await _db.collection('users').doc(_uid).get();
-      // Retorna o nome do documento ou o displayName do Auth como fallback.
       return userDoc.data()?['name'] ??
           _auth.currentUser?.displayName ??
           'Usuário';
     } catch (e) {
-      // Em caso de erro, usa o displayName do Auth como fallback final.
       return _auth.currentUser?.displayName ?? 'Usuário';
     }
   }
 
-  // --- MÉTODOS DA HOME SCREEN ---
   Future<HomeScreenData> fetchDataForHomeScreen() async {
     if (_uid == null) throw Exception("Usuário não autenticado.");
 
@@ -43,14 +36,30 @@ class FirestoreService {
           'Usuário';
       final currentStreak = userDoc.data()?['currentStreak'] ?? 0;
 
-      final String todayDayOfWeek = DateFormat(
-        'EEEE',
-      ).format(DateTime.now()).toLowerCase();
+      // CORREÇÃO: Busca hábitos de forma mais inteligente.
+      // Pega o dia da semana como um número (Segunda=1, Domingo=7).
+      final int todayAsInt = DateTime.now().weekday;
 
+      // Faz uma consulta que pega hábitos que são diários OU que contêm o dia de hoje.
       final habitsSnapshot = await userDocRef
           .collection('habits')
-          .where('daysOfWeek', arrayContains: todayDayOfWeek)
+          .where('frequencyType', whereIn: ['daily', 'specificDays'])
           .get();
+
+      // Filtra os resultados no lado do cliente.
+      final dailyAndSpecificHabits = habitsSnapshot.docs.where((doc) {
+        final data = doc.data();
+        if (data['frequencyType'] == 'daily') {
+          return true; // Inclui todos os hábitos diários.
+        }
+        if (data['frequencyType'] == 'specificDays' &&
+            data['specificDays'] != null) {
+          return (data['specificDays'] as List).contains(
+            todayAsInt,
+          ); // Inclui se o dia de hoje estiver na lista.
+        }
+        return false;
+      }).toList();
 
       final String todayDateKey = DateFormat(
         'yyyy-MM-dd',
@@ -64,7 +73,7 @@ class FirestoreService {
           ? (todayLogSnapshot.data()!['completedHabits'] ?? {})
           : {};
 
-      final List<HomeHabit> todayHabits = habitsSnapshot.docs.map((doc) {
+      final List<HomeHabit> todayHabits = dailyAndSpecificHabits.map((doc) {
         return HomeHabit(
           id: doc.id,
           name: doc.data()['name'] ?? 'Hábito sem nome',
@@ -94,8 +103,6 @@ class FirestoreService {
       'completedHabits': {habitId: isCompleted},
     }, SetOptions(merge: true));
   }
-
-  // --- MÉTODOS PARA HÁBITOS (CRUD) ---
 
   Stream<List<Habito>> getHabitsStream() {
     if (_uid == null) return Stream.value([]);
@@ -143,7 +150,25 @@ class FirestoreService {
         .delete();
   }
 
-  // --- MÉTODOS PARA ROTINAS (CRUD) ---
+  Future<Map<String, bool>> getHabitHistory(String habitId) async {
+    if (_uid == null) return {};
+
+    final Map<String, bool> history = {};
+    final snapshot = await _db
+        .collection('users')
+        .doc(_uid)
+        .collection('habit_log')
+        .get();
+
+    for (var doc in snapshot.docs) {
+      final data = doc.data();
+      if (data.containsKey('completedHabits') &&
+          data['completedHabits'].containsKey(habitId)) {
+        history[doc.id] = data['completedHabits'][habitId];
+      }
+    }
+    return history;
+  }
 
   Stream<List<Rotina>> getRoutinesStream() {
     if (_uid == null) return Stream.value([]);
@@ -178,8 +203,6 @@ class FirestoreService {
         .doc(rotinaId)
         .delete();
   }
-
-  // --- MÉTODOS PARA METAS (CRUD) ---
 
   Stream<List<Meta>> getGoalsStream() {
     if (_uid == null) return Stream.value([]);

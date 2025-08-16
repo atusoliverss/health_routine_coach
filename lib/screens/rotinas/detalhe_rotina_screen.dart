@@ -187,7 +187,7 @@ class _DetalheRotinaScreenState extends State<DetalheRotinaScreen> {
                 const SizedBox(height: 8),
                 Card(
                   color: Colors.grey[200],
-                  elevation: 0,
+                  elevation: 3,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
@@ -252,7 +252,7 @@ class _DetalheRotinaScreenState extends State<DetalheRotinaScreen> {
                       final habitsInRoutine = snapshot.data!;
                       return Card(
                         color: Colors.grey[200],
-                        elevation: 0,
+                        elevation: 3,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12),
                         ),
