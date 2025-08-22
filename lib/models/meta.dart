@@ -1,15 +1,20 @@
+// lib/models/meta.dart
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-// Enum para o status da meta.
+/// Enum para definir o status de uma meta.
 enum MetaStatus { emProgresso, concluido, expirado }
 
+/// Representa a estrutura de uma Meta no aplicativo.
 class Meta {
-  final String id;
-  String name;
-  String? description;
-  DateTime deadline;
-  MetaStatus status;
+  // --- PROPRIEDADES ---
+  final String id; // ID único da meta.
+  String name; // Nome da meta (ex: "Correr 5km").
+  String? description; // Descrição opcional.
+  DateTime deadline; // Prazo final para concluir a meta.
+  MetaStatus status; // Status atual da meta.
 
+  // --- CONSTRUTOR ---
   Meta({
     required this.id,
     required this.name,
@@ -18,13 +23,15 @@ class Meta {
     this.status = MetaStatus.emProgresso,
   });
 
-  /// Construtor para criar uma Meta a partir de dados do Firestore.
+  // --- CONVERSÃO DE DADOS (FIRESTORE) ---
+
+  /// Construtor factory para criar um objeto Meta a partir de dados do Firestore.
   factory Meta.fromFirestore(String id, Map<String, dynamic> data) {
     return Meta(
       id: id,
       name: data['name'] ?? '',
       description: data['description'],
-      // Converte o Timestamp do Firestore para DateTime.
+      // Converte o Timestamp (formato de data do Firestore) para DateTime.
       deadline: (data['deadline'] as Timestamp).toDate(),
       status: MetaStatus.values.firstWhere(
         (e) => e.name == data['status'],
@@ -33,19 +40,20 @@ class Meta {
     );
   }
 
-  /// Método para converter uma Meta em um formato para salvar no Firestore.
+  /// Método para converter o objeto Meta em um Map para salvar no Firestore.
   Map<String, dynamic> toFirestore() {
     return {
       'name': name,
       'description': description,
-      'deadline': Timestamp.fromDate(
-        deadline,
-      ), // Converte DateTime para Timestamp.
-      'status': status.name, // Salva o enum como string.
+      // Converte o DateTime do Dart para o formato Timestamp do Firestore.
+      'deadline': Timestamp.fromDate(deadline),
+      'status': status.name, // Salva o enum como uma string.
     };
   }
 
-  // Método para calcular os dias restantes.
+  // --- MÉTODOS AUXILIARES ---
+
+  /// Calcula os dias restantes até o prazo final da meta.
   int get daysLeft {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
@@ -55,6 +63,7 @@ class Meta {
       deadline.day,
     );
     final difference = deadlineDateOnly.difference(today).inDays;
+    // Retorna 0 se o prazo já passou.
     return difference < 0 ? 0 : difference;
   }
 }

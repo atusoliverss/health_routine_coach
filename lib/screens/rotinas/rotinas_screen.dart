@@ -1,9 +1,17 @@
+// lib/screens/rotinas/rotinas_screen.dart
+
+// --- IMPORTAÇÕES ---
 import 'package:flutter/material.dart';
+// Importa o modelo de dados para Rotina.
 import 'package:health_routine_coach/models/rotina.dart';
+// Importa o serviço que se comunica com o Firestore.
 import 'package:health_routine_coach/services/firestore_service.dart';
+// Importa as telas de adicionar/editar e de detalhes da rotina.
 import 'package:health_routine_coach/screens/rotinas/add_edit_rotina_screen.dart';
 import 'package:health_routine_coach/screens/rotinas/detalhe_rotina_screen.dart';
 
+// --- WIDGET DA TELA DE ROTINAS ---
+// StatefulWidget porque seu conteúdo (a lista de rotinas) pode mudar.
 class RotinasScreen extends StatefulWidget {
   const RotinasScreen({super.key});
 
@@ -11,9 +19,12 @@ class RotinasScreen extends StatefulWidget {
   State<RotinasScreen> createState() => _RotinasScreenState();
 }
 
+// --- CLASSE DE ESTADO DA TELA DE ROTINAS ---
 class _RotinasScreenState extends State<RotinasScreen> {
+  // Instância do serviço que se comunica com o Firestore.
   final FirestoreService _firestoreService = FirestoreService();
 
+  /// Converte a lista de números de dias da semana para um texto legível para a UI.
   String _getDaysText(List<int> days) {
     if (days.length == 7) return 'Todos os dias';
     if (days.isEmpty) return 'Nenhum dia ativo';
@@ -27,18 +38,23 @@ class _RotinasScreenState extends State<RotinasScreen> {
       6: 'Sáb',
       7: 'Dom',
     };
+    // Ordena os dias para uma exibição consistente (ex: Seg, Ter, Qua).
     days.sort();
     return days.map((day) => dayMap[day] ?? '').join(', ');
   }
 
+  // --- CONSTRUÇÃO DA INTERFACE ---
   @override
   Widget build(BuildContext context) {
+    // Scaffold fornece a estrutura base da tela.
     return Scaffold(
       body: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16.0),
+        // Column organiza os widgets verticalmente.
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // Título grande da página.
             const Padding(
               padding: EdgeInsets.only(top: 24.0, bottom: 16.0),
               child: Text(
@@ -50,14 +66,16 @@ class _RotinasScreenState extends State<RotinasScreen> {
                 ),
               ),
             ),
+            // Card que funciona como um botão para adicionar uma nova rotina.
             Card(
               color: Colors.grey[200],
-              elevation: 3,
+              elevation: 0,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(12),
               ),
               child: InkWell(
                 onTap: () {
+                  // Navega para a tela de adicionar/editar rotina.
                   Navigator.of(context).push(
                     MaterialPageRoute(
                       builder: (context) => const AddEditRotinaScreen(),
@@ -89,16 +107,21 @@ class _RotinasScreenState extends State<RotinasScreen> {
             ),
             const SizedBox(height: 24),
 
+            // Lista de rotinas que se atualiza em tempo real.
             Expanded(
+              // StreamBuilder ouve as mudanças na coleção de rotinas do Firestore.
               child: StreamBuilder<List<Rotina>>(
                 stream: _firestoreService.getRoutinesStream(),
                 builder: (context, snapshot) {
+                  // Enquanto os dados estão carregando.
                   if (snapshot.connectionState == ConnectionState.waiting) {
                     return const Center(child: CircularProgressIndicator());
                   }
+                  // Se ocorrer um erro.
                   if (snapshot.hasError) {
                     return Center(child: Text('Erro: ${snapshot.error}'));
                   }
+                  // Se não houver dados (lista vazia).
                   if (!snapshot.hasData || snapshot.data!.isEmpty) {
                     return const Center(
                       child: Text(
@@ -108,7 +131,9 @@ class _RotinasScreenState extends State<RotinasScreen> {
                     );
                   }
 
+                  // Se os dados foram carregados com sucesso.
                   final rotinas = snapshot.data!;
+                  // ListView.builder constrói a lista de forma eficiente.
                   return ListView.builder(
                     padding: EdgeInsets.zero,
                     itemCount: rotinas.length,
@@ -116,7 +141,7 @@ class _RotinasScreenState extends State<RotinasScreen> {
                       final rotina = rotinas[index];
                       return Card(
                         color: Colors.grey[200],
-                        elevation: 3,
+                        elevation: 0,
                         margin: const EdgeInsets.only(bottom: 12.0),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12),
@@ -124,6 +149,7 @@ class _RotinasScreenState extends State<RotinasScreen> {
                         child: InkWell(
                           borderRadius: BorderRadius.circular(12),
                           onTap: () {
+                            // Navega para a tela de detalhes da rotina selecionada.
                             Navigator.of(context).push(
                               MaterialPageRoute(
                                 builder: (context) =>

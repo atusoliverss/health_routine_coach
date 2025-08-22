@@ -1,12 +1,18 @@
 // lib/screens/metas/metas_screen.dart
 
+// --- IMPORTAÇÕES ---
 import 'package:flutter/material.dart';
+// Importa o modelo de dados para Meta.
 import 'package:health_routine_coach/models/meta.dart';
+// Importa o serviço que se comunica com o Firestore.
 import 'package:health_routine_coach/services/firestore_service.dart';
+// Importa as telas de adicionar/editar e de detalhes da meta.
 import 'package:health_routine_coach/screens/metas/add_edit_meta_screen.dart';
 import 'package:health_routine_coach/screens/metas/detalhe_meta_screen.dart';
-import 'package:intl/intl.dart'; // Importado para formatar a data
+import 'package:intl/intl.dart'; // Importado para formatar a data.
 
+// --- WIDGET DA TELA DE METAS ---
+// StatefulWidget porque seu conteúdo (a lista de metas) pode mudar.
 class MetasScreen extends StatefulWidget {
   const MetasScreen({super.key});
 
@@ -14,10 +20,12 @@ class MetasScreen extends StatefulWidget {
   State<MetasScreen> createState() => _MetasScreenState();
 }
 
+// --- CLASSE DE ESTADO DA TELA DE METAS ---
 class _MetasScreenState extends State<MetasScreen> {
+  // Instância do serviço que se comunica com o Firestore.
   final FirestoreService _firestoreService = FirestoreService();
 
-  // Função para construir o texto de status com a cor correspondente
+  /// Constrói um widget de Texto com cor e estilo baseados no status da meta.
   Widget _buildStatusText(MetaStatus status) {
     Color color;
     String text;
@@ -41,16 +49,18 @@ class _MetasScreenState extends State<MetasScreen> {
     );
   }
 
+  // --- CONSTRUÇÃO DA INTERFACE ---
   @override
   Widget build(BuildContext context) {
-    // ALTERAÇÃO: A tela agora usa um Scaffold para ter uma estrutura consistente.
+    // Scaffold fornece a estrutura base da tela.
     return Scaffold(
       body: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16.0),
+        // Column organiza os widgets verticalmente.
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // ALTERAÇÃO: Adicionado um título grande no topo, igual à tela de hábitos.
+            // Título grande da página.
             const Padding(
               padding: EdgeInsets.only(top: 24.0, bottom: 16.0),
               child: Text(
@@ -62,18 +72,16 @@ class _MetasScreenState extends State<MetasScreen> {
                 ),
               ),
             ),
-
-            // ALTERAÇÃO: O Card de "Adicionar nova meta" foi reestilizado.
-            // Agora tem elevação, cor de fundo e espaçamento interno para combinar
-            // com o design da tela de hábitos.
+            // Card que funciona como um botão para adicionar uma nova meta.
             Card(
               color: Colors.grey[200],
-              elevation: 3,
+              elevation: 0,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(12),
               ),
               child: InkWell(
                 onTap: () {
+                  // Navega para a tela de adicionar/editar meta.
                   Navigator.of(context).push<Meta>(
                     MaterialPageRoute(
                       builder: (context) => const AddEditMetaScreen(),
@@ -105,18 +113,23 @@ class _MetasScreenState extends State<MetasScreen> {
             ),
             const SizedBox(height: 24),
 
-            // A lógica do StreamBuilder permanece a mesma.
+            // Lista de metas que se atualiza em tempo real.
             Expanded(
+              // StreamBuilder ouve as mudanças na coleção de metas do Firestore.
               child: StreamBuilder<List<Meta>>(
                 stream: _firestoreService.getGoalsStream(),
                 builder: (context, snapshot) {
+                  // Enquanto os dados estão carregando.
                   if (snapshot.connectionState == ConnectionState.waiting) {
                     return const Center(child: CircularProgressIndicator());
                   }
+                  // Se ocorrer um erro.
                   if (snapshot.hasError) {
                     return Center(
-                        child: Text('Erro ao carregar metas: ${snapshot.error}'));
+                      child: Text('Erro ao carregar metas: ${snapshot.error}'),
+                    );
                   }
+                  // Se não houver dados (lista vazia).
                   if (!snapshot.hasData || snapshot.data!.isEmpty) {
                     return const Center(
                       child: Text(
@@ -126,18 +139,17 @@ class _MetasScreenState extends State<MetasScreen> {
                     );
                   }
 
+                  // Se os dados foram carregados com sucesso.
                   final metas = snapshot.data!;
+                  // ListView.builder constrói a lista de forma eficiente.
                   return ListView.builder(
-                    padding: EdgeInsets.zero, // Remove o padding padrão do ListView
+                    padding: EdgeInsets.zero,
                     itemCount: metas.length,
                     itemBuilder: (context, index) {
                       final meta = metas[index];
-                      // ALTERAÇÃO: Card da meta foi completamente reestilizado.
-                      // Agora usa o mesmo padrão de cor, elevação e bordas
-                      // dos cards de hábito. O conteúdo interno foi reorganizado.
                       return Card(
                         color: Colors.grey[200],
-                        elevation: 3,
+                        elevation: 0,
                         margin: const EdgeInsets.only(bottom: 12.0),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12),
@@ -145,6 +157,7 @@ class _MetasScreenState extends State<MetasScreen> {
                         child: InkWell(
                           borderRadius: BorderRadius.circular(12),
                           onTap: () {
+                            // Navega para a tela de detalhes da meta selecionada.
                             Navigator.of(context).push<Meta>(
                               MaterialPageRoute(
                                 builder: (context) =>
@@ -178,7 +191,6 @@ class _MetasScreenState extends State<MetasScreen> {
                                 ),
                                 const SizedBox(height: 8),
                                 Text(
-                                  // Usando DateFormat para um visual mais limpo.
                                   'Prazo: ${DateFormat('dd/MM/yyyy').format(meta.deadline)}',
                                   style: TextStyle(
                                     fontSize: 14,
@@ -205,7 +217,6 @@ class _MetasScreenState extends State<MetasScreen> {
                                         color: Colors.grey[700],
                                       ),
                                     ),
-                                    // A lógica do status foi mantida.
                                     _buildStatusText(meta.status),
                                   ],
                                 ),

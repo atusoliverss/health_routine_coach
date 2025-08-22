@@ -1,20 +1,29 @@
 // lib/models/habito.dart
 
-// Enum para o tipo de frequência do hábito.
-enum FrequencyType { daily, weeklyTimes, specificDays }
+/// Enum para definir o tipo de frequência de um hábito.
+enum FrequencyType {
+  daily, // Todos os dias.
+  weeklyTimes, // Um número específico de vezes por semana.
+  specificDays, // Em dias específicos da semana.
+}
 
-// Enum para o turno preferido do hábito.
+/// Enum para definir o turno preferido para um hábito.
 enum Turno { manha, tarde, noite }
 
+/// Representa a estrutura de um Hábito no aplicativo.
 class Habito {
-  final String id;
-  final String name;
-  final String? description;
-  final FrequencyType frequencyType;
-  final int? weeklyTarget; // Apenas para weeklyTimes
-  final List<int>? specificDays; // Apenas para specificDays (1=Seg, 7=Dom)
-  final Turno? preferredTurn;
+  // --- PROPRIEDADES ---
+  final String id; // ID único do hábito, gerado automaticamente.
+  final String name; // Nome do hábito (ex: "Beber 2L de água").
+  final String? description; // Descrição opcional do hábito.
+  final FrequencyType
+  frequencyType; // O tipo de frequência (diário, semanal, etc.).
+  final int? weeklyTarget; // Alvo de vezes por semana (usado com weeklyTimes).
+  final List<int>?
+  specificDays; // Dias da semana (1=Seg, 7=Dom) (usado com specificDays).
+  final Turno? preferredTurn; // Turno preferido para o hábito.
 
+  // --- CONSTRUTOR ---
   Habito({
     required this.id,
     required this.name,
@@ -25,15 +34,18 @@ class Habito {
     this.preferredTurn,
   });
 
-  /// Construtor para criar um Habito a partir de dados do Firestore.
+  // --- CONVERSÃO DE DADOS (FIRESTORE) ---
+
+  /// Construtor factory para criar um objeto Habito a partir de dados do Firestore.
   factory Habito.fromFirestore(String id, Map<String, dynamic> data) {
     return Habito(
       id: id,
       name: data['name'] ?? '',
       description: data['description'],
+      // Converte a string salva no Firestore de volta para o tipo Enum.
       frequencyType: FrequencyType.values.firstWhere(
         (e) => e.name == data['frequencyType'],
-        orElse: () => FrequencyType.daily,
+        orElse: () => FrequencyType.daily, // Valor padrão em caso de erro.
       ),
       weeklyTarget: data['weeklyTarget'],
       specificDays: data['specificDays'] != null
@@ -45,15 +57,16 @@ class Habito {
     );
   }
 
-  /// Método para converter um Habito em um formato para salvar no Firestore.
+  /// Método para converter o objeto Habito em um Map para salvar no Firestore.
   Map<String, dynamic> toFirestore() {
     return {
       'name': name,
       'description': description,
-      'frequencyType': frequencyType.name, // Salva o enum como string
+      'frequencyType':
+          frequencyType.name, // Salva o enum como uma string (ex: 'daily').
       'weeklyTarget': weeklyTarget,
       'specificDays': specificDays,
-      'preferredTurn': preferredTurn?.name, // Salva o enum como string
+      'preferredTurn': preferredTurn?.name, // Salva o enum como uma string.
     };
   }
 }

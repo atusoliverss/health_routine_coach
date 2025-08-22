@@ -1,5 +1,6 @@
 // lib/screens/rotinas/add_edit_rotina_screen.dart
 
+// --- IMPORTAÇÕES ---
 import 'package:flutter/material.dart';
 import 'package:uuid/uuid.dart';
 import 'package:health_routine_coach/models/rotina.dart';
@@ -7,8 +8,9 @@ import 'package:health_routine_coach/models/habito.dart';
 import 'package:health_routine_coach/services/firestore_service.dart';
 import 'package:health_routine_coach/widgets/custom_app_bar.dart';
 
+// --- WIDGET DA TELA DE ADICIONAR/EDITAR ROTINA ---
 class AddEditRotinaScreen extends StatefulWidget {
-  final Rotina? rotina;
+  final Rotina? rotina; // Rotina opcional para o modo de edição.
 
   const AddEditRotinaScreen({super.key, this.rotina});
 
@@ -17,6 +19,7 @@ class AddEditRotinaScreen extends StatefulWidget {
 }
 
 class _AddEditRotinaScreenState extends State<AddEditRotinaScreen> {
+  // --- ESTADO E CONTROLADORES ---
   final _formKey = GlobalKey<FormState>();
   final FirestoreService _firestoreService = FirestoreService();
   late TextEditingController _nameController;
@@ -39,6 +42,7 @@ class _AddEditRotinaScreenState extends State<AddEditRotinaScreen> {
   @override
   void initState() {
     super.initState();
+    // Inicializa os controladores e o estado com os dados da rotina (se houver).
     _nameController = TextEditingController(text: widget.rotina?.name ?? '');
     _descriptionController = TextEditingController(
       text: widget.rotina?.description ?? '',
@@ -48,11 +52,13 @@ class _AddEditRotinaScreenState extends State<AddEditRotinaScreen> {
     _allHabitsFuture = _firestoreService.getHabitsOnce();
     _userNameFuture = _firestoreService.getUserName();
 
+    // Se estiver editando, carrega os hábitos que já estavam selecionados.
     if (widget.rotina != null) {
       _loadInitialHabits();
     }
   }
 
+  /// Carrega os hábitos que já estavam na rotina (no modo de edição).
   Future<void> _loadInitialHabits() async {
     final allHabits = await _allHabitsFuture;
     if (mounted) {
@@ -66,11 +72,14 @@ class _AddEditRotinaScreenState extends State<AddEditRotinaScreen> {
 
   @override
   void dispose() {
+    // Libera os recursos dos controladores.
     _nameController.dispose();
     _descriptionController.dispose();
     super.dispose();
   }
 
+  // --- MÉTODOS DE LÓGICA ---
+  /// Salva a rotina (nova ou editada) no Firestore.
   Future<void> _saveRotina() async {
     if (!_formKey.currentState!.validate()) return;
 
@@ -83,6 +92,7 @@ class _AddEditRotinaScreenState extends State<AddEditRotinaScreen> {
       return;
     }
 
+    // Cria o objeto da rotina com os dados do formulário.
     final newOrUpdatedRotina = Rotina(
       id: widget.rotina?.id ?? const Uuid().v4(),
       name: _nameController.text.trim(),
@@ -91,6 +101,7 @@ class _AddEditRotinaScreenState extends State<AddEditRotinaScreen> {
       habitIds: _selectedHabits.map((h) => h.id).toList(),
     );
 
+    // Salva a rotina no Firestore.
     await _firestoreService.saveRoutine(newOrUpdatedRotina);
 
     if (mounted) {
@@ -98,6 +109,7 @@ class _AddEditRotinaScreenState extends State<AddEditRotinaScreen> {
     }
   }
 
+  /// Abre a tela para selecionar os hábitos a serem vinculados.
   Future<void> _selectHabits() async {
     final allHabits = await _allHabitsFuture;
     final List<Habito>? result = await Navigator.of(context).push(
@@ -117,7 +129,7 @@ class _AddEditRotinaScreenState extends State<AddEditRotinaScreen> {
     }
   }
 
-  /// CORREÇÃO: Método para abrir o diálogo de seleção de dias.
+  /// Abre o diálogo para selecionar os dias da semana.
   Future<void> _selectDays() async {
     final List<int> tempSelectedDays = List.from(_selectedDays);
     final List<int>? result = await showDialog<List<int>>(
@@ -145,7 +157,7 @@ class _AddEditRotinaScreenState extends State<AddEditRotinaScreen> {
                         }
                       });
                     },
-                    selectedColor: Color(0xFF03A9F4),
+                    selectedColor: Theme.of(context).primaryColor,
                     checkmarkColor: Colors.white,
                     labelStyle: TextStyle(
                       color: isSelected ? Colors.white : Colors.black87,
@@ -154,33 +166,13 @@ class _AddEditRotinaScreenState extends State<AddEditRotinaScreen> {
                 }),
               ),
               actions: <Widget>[
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                  children: [
-                    ElevatedButton(
-                      onPressed: () => Navigator.of(context).pop(),
-                      style: ElevatedButton.styleFrom(
-                        maximumSize: const Size.fromWidth(170),
-                        backgroundColor: Color.fromARGB(255, 255, 0, 0),
-                      ),
-                      child: const Text(
-                        'CANCELAR',
-                        style: TextStyle(color: Colors.white),
-                      ),
-                    ),
-                    ElevatedButton(
-                      onPressed: () =>
-                          Navigator.of(context).pop(tempSelectedDays),
-                      style: ElevatedButton.styleFrom(
-                        maximumSize: const Size.fromWidth(170),
-                        backgroundColor: Color(0xFF12855B),
-                      ),
-                      child: const Text(
-                        'CONFIRMAR',
-                        style: TextStyle(color: Colors.white),
-                      ),
-                    ),
-                  ],
+                TextButton(
+                  child: const Text('CANCELAR'),
+                  onPressed: () => Navigator.of(context).pop(),
+                ),
+                TextButton(
+                  child: const Text('CONCLUIR'),
+                  onPressed: () => Navigator.of(context).pop(tempSelectedDays),
                 ),
               ],
             );
@@ -196,6 +188,7 @@ class _AddEditRotinaScreenState extends State<AddEditRotinaScreen> {
     }
   }
 
+  // --- CONSTRUÇÃO DA INTERFACE ---
   @override
   Widget build(BuildContext context) {
     final bool isEditing = widget.rotina != null;
@@ -215,6 +208,7 @@ class _AddEditRotinaScreenState extends State<AddEditRotinaScreen> {
           body: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // Cabeçalho personalizado da página.
               Padding(
                 padding: const EdgeInsets.all(16.0),
                 child: Row(
@@ -238,6 +232,7 @@ class _AddEditRotinaScreenState extends State<AddEditRotinaScreen> {
                   ],
                 ),
               ),
+              // Formulário de preenchimento.
               Expanded(
                 child: SingleChildScrollView(
                   padding: const EdgeInsets.symmetric(horizontal: 16.0),
@@ -245,7 +240,7 @@ class _AddEditRotinaScreenState extends State<AddEditRotinaScreen> {
                     key: _formKey,
                     child: Card(
                       color: Colors.grey[200],
-                      elevation: 3,
+                      elevation: 0,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12),
                       ),
@@ -405,8 +400,7 @@ class _AddEditRotinaScreenState extends State<AddEditRotinaScreen> {
                                 child: ElevatedButton.icon(
                                   onPressed: _saveRotina,
                                   icon: const Icon(
-                                    size: 30,
-                                    Icons.add_box_rounded,
+                                    Icons.add,
                                     color: Colors.white,
                                   ),
                                   label: Text(
@@ -441,7 +435,7 @@ class _AddEditRotinaScreenState extends State<AddEditRotinaScreen> {
   }
 }
 
-// Tela de Seleção de Hábitos
+// --- WIDGET INTERNO PARA A TELA DE SELEÇÃO DE HÁBITOS ---
 class _HabitSelectionScreen extends StatefulWidget {
   final List<Habito> allHabits;
   final List<Habito> initialSelectedHabits;
@@ -456,6 +450,7 @@ class _HabitSelectionScreen extends StatefulWidget {
 }
 
 class _HabitSelectionScreenState extends State<_HabitSelectionScreen> {
+  // --- ESTADO E SERVIÇOS ---
   final FirestoreService _firestoreService = FirestoreService();
   late List<Habito> _currentSelectedHabits;
   late Future<String> _userNameFuture;
@@ -467,9 +462,12 @@ class _HabitSelectionScreenState extends State<_HabitSelectionScreen> {
     _userNameFuture = _firestoreService.getUserName();
   }
 
+  // --- MÉTODOS DE LÓGICA ---
+  /// Verifica se um hábito já está na lista de selecionados.
   bool _isHabitSelected(Habito habit) =>
       _currentSelectedHabits.any((h) => h.id == habit.id);
 
+  /// Adiciona ou remove um hábito da lista de selecionados.
   void _toggleHabitSelection(Habito habit) {
     setState(() {
       if (_isHabitSelected(habit)) {
@@ -480,6 +478,7 @@ class _HabitSelectionScreenState extends State<_HabitSelectionScreen> {
     });
   }
 
+  // --- CONSTRUÇÃO DA INTERFACE ---
   @override
   Widget build(BuildContext context) {
     return FutureBuilder<String>(
@@ -496,10 +495,11 @@ class _HabitSelectionScreenState extends State<_HabitSelectionScreen> {
           appBar: CustomAppBar(userName: userName),
           body: Column(
             children: [
+              // Cabeçalho personalizado da página de seleção.
               Padding(
                 padding: const EdgeInsets.all(16.0),
                 child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     CircleAvatar(
                       backgroundColor: const Color(0xFF03A9F4),
@@ -531,6 +531,7 @@ class _HabitSelectionScreenState extends State<_HabitSelectionScreen> {
                   ],
                 ),
               ),
+              // Lista de hábitos disponíveis para seleção.
               Expanded(
                 child: widget.allHabits.isEmpty
                     ? const Center(child: Text('Nenhum hábito cadastrado.'))

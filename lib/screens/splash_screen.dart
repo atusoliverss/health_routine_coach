@@ -1,12 +1,19 @@
-// lib/screens/splash_screen.dart
+// --- IMPORTAÇÕES ---
+// Pacote principal do Flutter.
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart'; // Para controlar o estilo da barra de status
-import 'package:firebase_auth/firebase_auth.dart'; // Para verificar o status de login do Firebase
-import 'dart:async'; // Para usar o Future.delayed e o listen
+// Pacote para controlar o estilo da barra de status do sistema (hora, bateria, etc.).
+import 'package:flutter/services.dart';
+// Pacote do Firebase para verificar o status de login do usuário.
+import 'package:firebase_auth/firebase_auth.dart';
+// Pacote para usar funcionalidades assíncronas como o StreamSubscription.
+import 'dart:async';
 
-import 'package:health_routine_coach/screens/auth_screen.dart';
+// Importa as telas para as quais a splash screen pode navegar.
+import 'package:health_routine_coach/screens/auth/auth_screen.dart';
 import 'package:health_routine_coach/screens/home_screen.dart';
 
+// --- WIDGET DA TELA DE ABERTURA ---
+// StatefulWidget porque precisa gerenciar um estado (o listener de autenticação).
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
 
@@ -14,42 +21,48 @@ class SplashScreen extends StatefulWidget {
   State<SplashScreen> createState() => _SplashScreenState();
 }
 
+// --- CLASSE DE ESTADO DA SPLASHSCREEN ---
 class _SplashScreenState extends State<SplashScreen> {
-  // NOVO: Adicionado um StreamSubscription para poder cancelar o listener.
-  // Isso é uma boa prática para evitar vazamentos de memória.
+  // Variável para manter uma referência ao "ouvinte" de autenticação.
+  // Isso permite que a gente cancele o ouvinte para evitar vazamentos de memória.
   StreamSubscription<User?>? _authSubscription;
 
+  // --- CICLO DE VIDA DO WIDGET ---
   @override
+  // O método initState é chamado uma única vez quando o widget é criado.
   void initState() {
     super.initState();
+    // Inicia a lógica de navegação assim que a tela é construída.
     _navigateToNextScreen();
   }
 
-  // NOVO: Cancela o listener quando o widget é descartado.
   @override
+  // O método dispose é chamado quando o widget é destruído.
+  // É crucial cancelar o listener aqui para liberar recursos.
   void dispose() {
     _authSubscription?.cancel();
     super.dispose();
   }
 
+  // --- LÓGICA DE NAVEGAÇÃO ---
+  /// Espera um tempo e depois verifica o status de login para decidir para qual tela ir.
   void _navigateToNextScreen() async {
-    // Adiciona um atraso para a splash screen ser visível por um tempo.
+    // Espera 3 segundos para que o logo e o nome do app fiquem visíveis.
     await Future.delayed(const Duration(seconds: 3));
 
-    // Garante que o widget ainda está na "árvore" de widgets antes de navegar.
+    // Garante que o widget ainda está na tela antes de tentar navegar.
     if (!mounted) return;
 
-    // A lógica de navegação foi simplificada. O StreamBuilder no main.dart já faz isso de forma mais eficiente.
-    // A splash screen agora apenas espera e navega para uma tela de "decisão".
-    // Para manter sua lógica original, vamos usar um listener uma única vez.
+    // Ouve a primeira mudança no estado de autenticação.
     _authSubscription = FirebaseAuth.instance.authStateChanges().listen((user) {
       if (!mounted) return;
 
-      // Cancela o listener após o primeiro evento para não navegar múltiplas vezes.
+      // Cancela o ouvinte após o primeiro evento para não navegar múltiplas vezes.
       _authSubscription?.cancel();
 
+      // Verifica se há um usuário logado.
       if (user == null) {
-        // Usuário não logado, navega para a tela de autenticação.
+        // Se não houver usuário, navega para a tela de autenticação.
         Navigator.of(context).pushReplacement(
           PageRouteBuilder(
             pageBuilder: (context, animation, secondaryAnimation) =>
@@ -62,7 +75,7 @@ class _SplashScreenState extends State<SplashScreen> {
           ),
         );
       } else {
-        // Usuário logado, navega para a Home Screen.
+        // Se houver um usuário, navega para a tela principal.
         Navigator.of(context).pushReplacement(
           PageRouteBuilder(
             pageBuilder: (context, animation, secondaryAnimation) =>
@@ -78,39 +91,45 @@ class _SplashScreenState extends State<SplashScreen> {
     });
   }
 
+  // --- CONSTRUÇÃO DA INTERFACE ---
   @override
   Widget build(BuildContext context) {
-    // Define o estilo da barra de status para combinar com a splash screen.
+    // Define o estilo da barra de status do sistema para combinar com a splash screen.
     SystemChrome.setSystemUIOverlayStyle(
       const SystemUiOverlayStyle(
-        statusBarColor: Color(0xFFF5F5F5), // Cor de fundo da splash.
+        statusBarColor: Color(0xFFF5F5F5), // Cor de fundo da barra.
         statusBarIconBrightness:
-            Brightness.dark, // Ícones (wifi, bateria) escuros.
+            Brightness.dark, // Ícones (hora, bateria) escuros.
       ),
     );
 
+    // Scaffold é a estrutura base da tela.
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F5F5), // Cor de fundo.
+      backgroundColor: const Color(0xFFF5F5F5),
+      // Center alinha seu filho no centro da tela.
       body: Center(
+        // Column organiza os widgets verticalmente.
         child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisAlignment:
+              MainAxisAlignment.center, // Centraliza a coluna na vertical.
           children: [
+            // Imagem do logo do aplicativo.
             const Image(
               image: AssetImage('assets/images/logo-hrc.png'),
               width: 200,
               height: 200,
             ),
-            const SizedBox(height: 24), // Espaçamento.
+            const SizedBox(height: 24), // Espaçamento vertical.
+            // RichText permite ter texto com estilos diferentes (cores, etc.).
             RichText(
               textAlign: TextAlign.center,
               text: const TextSpan(
-                // O estilo padrão é herdado pelos filhos.
                 style: TextStyle(
                   fontFamily:
                       'Roboto', // Garanta que esta fonte está no seu pubspec.yaml
                   fontSize: 88,
                   fontWeight: FontWeight.bold,
-                  height: 0.8,
+                  height: 0.8, // Espaçamento entre as linhas.
                 ),
                 children: [
                   TextSpan(

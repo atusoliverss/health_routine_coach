@@ -1,11 +1,17 @@
 // lib/widgets/home_tab_content.dart
 
+// --- IMPORTAÇÕES ---
 import 'package:flutter/material.dart';
+// Pacote para formatação de datas.
 import 'package:intl/intl.dart';
+// Importa os modelos de dados e o serviço do Firestore.
 import '../models/home_models.dart';
 import '../services/firestore_service.dart';
 
+// --- WIDGET DO CONTEÚDO DA ABA HOME ---
+// StatefulWidget porque seu estado (progresso, hábitos marcados) pode mudar.
 class HomeTabContent extends StatefulWidget {
+  // Dados recebidos da HomeScreen.
   final List<HomeHabit> todayHabits;
   final int currentStreak;
 
@@ -19,12 +25,17 @@ class HomeTabContent extends StatefulWidget {
   State<HomeTabContent> createState() => _HomeTabContentState();
 }
 
+// --- CLASSE DE ESTADO ---
 class _HomeTabContentState extends State<HomeTabContent> {
-  late List<HomeHabit> _todayHabits;
-  double _dailyProgress = 0.0;
-  String _dailyQuote = '';
-  final FirestoreService _firestoreService = FirestoreService();
+  // --- ESTADO E SERVIÇOS ---
+  late List<HomeHabit>
+  _todayHabits; // Cópia local da lista de hábitos para manipulação.
+  double _dailyProgress = 0.0; // Progresso do dia (0.0 a 1.0).
+  String _dailyQuote = ''; // Frase de inspiração do dia.
+  final FirestoreService _firestoreService =
+      FirestoreService(); // Instância do serviço.
 
+  // Lista de frases de inspiração.
   final List<String> _inspirationalQuotes = [
     "\"Acredite em você mesmo e tudo será possível.\"",
     "\"O sucesso é a soma de pequenos esforços repetidos dia após dia.\"",
@@ -38,20 +49,26 @@ class _HomeTabContentState extends State<HomeTabContent> {
     "\"A força não vem da capacidade física, mas de uma vontade indomável.\"",
   ];
 
+  // --- CICLO DE VIDA ---
   @override
   void initState() {
     super.initState();
+    // Inicializa o estado com os dados recebidos da HomeScreen.
     _todayHabits = widget.todayHabits;
     _loadDailyQuote();
     _updateProgress();
   }
 
+  // --- MÉTODOS DE LÓGICA ---
+
+  /// Seleciona uma citação da lista com base no dia do ano.
   void _loadDailyQuote() {
     final dayOfYear = int.parse(DateFormat("D").format(DateTime.now()));
     final quoteIndex = dayOfYear % _inspirationalQuotes.length;
     _dailyQuote = _inspirationalQuotes[quoteIndex];
   }
 
+  /// Calcula e atualiza a barra de progresso.
   void _updateProgress() {
     int completed = _todayHabits.where((h) => h.isCompleted).length;
     int total = _todayHabits.length;
@@ -60,14 +77,17 @@ class _HomeTabContentState extends State<HomeTabContent> {
     });
   }
 
+  // --- CONSTRUÇÃO DA INTERFACE ---
   @override
   Widget build(BuildContext context) {
+    // SingleChildScrollView permite que a tela seja rolável.
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16.0),
+      // Column organiza os cards verticalmente.
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Card de Progresso
+          // --- Card de Progresso Diário ---
           Card(
             color: const Color(0xFFE0E0E0),
             elevation: 0,
@@ -94,6 +114,7 @@ class _HomeTabContentState extends State<HomeTabContent> {
                     style: const TextStyle(fontSize: 14, color: Colors.black54),
                   ),
                   const SizedBox(height: 12),
+                  // Mostra a barra de progresso ou uma mensagem se não houver hábitos.
                   if (_todayHabits.isNotEmpty) ...[
                     LinearProgressIndicator(
                       value: _dailyProgress,
@@ -117,6 +138,7 @@ class _HomeTabContentState extends State<HomeTabContent> {
                     ),
                   ],
                   const SizedBox(height: 16),
+                  // Exibe a sequência de dias.
                   Row(
                     children: [
                       const Icon(
@@ -139,7 +161,7 @@ class _HomeTabContentState extends State<HomeTabContent> {
             ),
           ),
           const SizedBox(height: 20),
-          // Card de Hábitos
+          // --- Card de Hábitos de Hoje ---
           Card(
             color: const Color(0xFFE0E0E0),
             elevation: 0,
@@ -158,6 +180,7 @@ class _HomeTabContentState extends State<HomeTabContent> {
                     ),
                   ),
                   const SizedBox(height: 10),
+                  // Se não houver hábitos, mostra uma mensagem.
                   if (_todayHabits.isEmpty)
                     const Padding(
                       padding: EdgeInsets.symmetric(vertical: 24.0),
@@ -169,6 +192,7 @@ class _HomeTabContentState extends State<HomeTabContent> {
                         ),
                       ),
                     )
+                  // Se houver hábitos, constrói a lista.
                   else
                     ListView.builder(
                       shrinkWrap: true,
@@ -176,6 +200,7 @@ class _HomeTabContentState extends State<HomeTabContent> {
                       itemCount: _todayHabits.length,
                       itemBuilder: (context, index) {
                         final habit = _todayHabits[index];
+                        // CheckboxListTile é um item de lista com uma caixa de seleção.
                         return CheckboxListTile(
                           title: Text(
                             habit.name,
@@ -190,6 +215,7 @@ class _HomeTabContentState extends State<HomeTabContent> {
                           ),
                           value: habit.isCompleted,
                           onChanged: (bool? newValue) {
+                            // Atualiza o estado local e salva a mudança no Firestore.
                             setState(() {
                               habit.isCompleted = newValue!;
                               _updateProgress();
@@ -210,17 +236,16 @@ class _HomeTabContentState extends State<HomeTabContent> {
             ),
           ),
           const SizedBox(height: 20),
-          // Card de Inspiração
+          // --- Card de Inspiração do Dia ---
           Card(
             color: const Color(0xFFE0E0E0),
             elevation: 0,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(12),
             ),
-            // CORREÇÃO: Envolvemos o conteúdo com um Container para garantir a largura total
-            // e um SizedBox para garantir uma altura mínima.
             child: Container(
-              width: double.infinity, // Garante que o card ocupe toda a largura
+              width:
+                  double.infinity, // Garante que o card ocupe toda a largura.
               padding: const EdgeInsets.all(16.0),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -240,8 +265,7 @@ class _HomeTabContentState extends State<HomeTabContent> {
                       color: Colors.black87,
                     ),
                   ),
-                  // Adiciona um espaço extra para aumentar a altura do card se o texto for curto.
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 20), // Garante uma altura mínima.
                 ],
               ),
             ),

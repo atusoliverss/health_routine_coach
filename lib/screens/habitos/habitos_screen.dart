@@ -1,11 +1,17 @@
 // lib/screens/habitos/habitos_screen.dart
 
+// --- IMPORTAÇÕES ---
 import 'package:flutter/material.dart';
+// Importa o modelo de dados para Hábito.
 import 'package:health_routine_coach/models/habito.dart';
+// Importa o serviço que se comunica com o Firestore.
 import 'package:health_routine_coach/services/firestore_service.dart';
+// Importa as telas de adicionar/editar e de detalhes do hábito.
 import 'package:health_routine_coach/screens/habitos/add_edit_habito_screen.dart';
 import 'package:health_routine_coach/screens/habitos/detalhe_habito_screen.dart';
 
+// --- WIDGET DA TELA DE HÁBITOS ---
+// StatefulWidget porque seu conteúdo (a lista de hábitos) pode mudar.
 class HabitosScreen extends StatefulWidget {
   const HabitosScreen({super.key});
 
@@ -13,10 +19,12 @@ class HabitosScreen extends StatefulWidget {
   State<HabitosScreen> createState() => _HabitosScreenState();
 }
 
+// --- CLASSE DE ESTADO DA TELA DE HÁBITOS ---
 class _HabitosScreenState extends State<HabitosScreen> {
+  // Instância do serviço que se comunica com o Firestore.
   final FirestoreService _firestoreService = FirestoreService();
 
-  /// Converte os dados de frequência do hábito em um texto legível.
+  /// Converte os dados de frequência do hábito em um texto legível para a UI.
   String _getFrequencyText(Habito habito) {
     switch (habito.frequencyType) {
       case FrequencyType.daily:
@@ -44,15 +52,18 @@ class _HabitosScreenState extends State<HabitosScreen> {
     }
   }
 
+  // --- CONSTRUÇÃO DA INTERFACE ---
   @override
   Widget build(BuildContext context) {
+    // Scaffold fornece a estrutura base da tela.
     return Scaffold(
       body: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16.0),
+        // Column organiza os widgets verticalmente.
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Título grande da página
+            // Título grande da página.
             const Padding(
               padding: EdgeInsets.only(top: 24.0, bottom: 16.0),
               child: Text(
@@ -64,15 +75,16 @@ class _HabitosScreenState extends State<HabitosScreen> {
                 ),
               ),
             ),
-            // Botão estilizado para adicionar novo hábito
+            // Card que funciona como um botão para adicionar um novo hábito.
             Card(
               color: Colors.grey[200],
-              elevation: 3,
+              elevation: 0,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(12),
               ),
               child: InkWell(
                 onTap: () {
+                  // Navega para a tela de adicionar/editar hábito.
                   Navigator.of(context).push(
                     MaterialPageRoute(
                       builder: (context) => const AddEditHabitoScreen(),
@@ -104,17 +116,21 @@ class _HabitosScreenState extends State<HabitosScreen> {
             ),
             const SizedBox(height: 24),
 
-            // Lista de hábitos
+            // Lista de hábitos que se atualiza em tempo real.
             Expanded(
+              // StreamBuilder ouve as mudanças na coleção de hábitos do Firestore.
               child: StreamBuilder<List<Habito>>(
                 stream: _firestoreService.getHabitsStream(),
                 builder: (context, snapshot) {
+                  // Enquanto os dados estão carregando.
                   if (snapshot.connectionState == ConnectionState.waiting) {
                     return const Center(child: CircularProgressIndicator());
                   }
+                  // Se ocorrer um erro.
                   if (snapshot.hasError) {
                     return Center(child: Text('Erro: ${snapshot.error}'));
                   }
+                  // Se não houver dados (lista vazia).
                   if (!snapshot.hasData || snapshot.data!.isEmpty) {
                     return const Center(
                       child: Text(
@@ -124,20 +140,21 @@ class _HabitosScreenState extends State<HabitosScreen> {
                     );
                   }
 
+                  // Se os dados foram carregados com sucesso.
                   final habitos = snapshot.data!;
+                  // ListView.builder constrói a lista de forma eficiente.
                   return ListView.builder(
                     padding: EdgeInsets.zero,
                     itemCount: habitos.length,
                     itemBuilder: (context, index) {
                       final habito = habitos[index];
-                      // A lógica de progresso semanal real seria mais complexa.
-                      // Por enquanto, usamos um valor fixo para o design.
+                      // TODO: A lógica de progresso semanal precisa ser implementada.
                       final progress =
                           (habito.name.length % 5) * 0.2 +
                           0.1; // Valor de exemplo
                       return Card(
                         color: Colors.grey[200],
-                        elevation: 3,
+                        elevation: 0,
                         margin: const EdgeInsets.only(bottom: 12.0),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12),
@@ -145,6 +162,7 @@ class _HabitosScreenState extends State<HabitosScreen> {
                         child: InkWell(
                           borderRadius: BorderRadius.circular(12),
                           onTap: () {
+                            // Navega para a tela de detalhes do hábito selecionado.
                             Navigator.of(context).push<Habito>(
                               MaterialPageRoute(
                                 builder: (context) =>

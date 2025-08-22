@@ -1,16 +1,19 @@
 // lib/screens/home_screen.dart
 
+// --- IMPORTAÇÕES ---
 import 'package:flutter/material.dart';
 import 'package:health_routine_coach/models/home_models.dart';
 import 'package:health_routine_coach/services/firestore_service.dart';
 import 'package:health_routine_coach/widgets/custom_app_bar.dart';
 import 'package:health_routine_coach/widgets/home_tab_content.dart';
 
-// Importa as telas das outras abas
+// Importa as telas das outras abas.
 import 'package:health_routine_coach/screens/habitos/habitos_screen.dart';
 import 'package:health_routine_coach/screens/metas/metas_screen.dart';
 import 'package:health_routine_coach/screens/rotinas/rotinas_screen.dart';
 
+// --- WIDGET "PAI" DA TELA HOME ---
+// Este widget é responsável por iniciar a busca de dados.
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
@@ -19,54 +22,51 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  late Future<HomeScreenData> _dataFuture;
+  // Um Stream que irá "transmitir" os dados da tela principal em tempo real.
+  late Stream<HomeScreenData> _dataStream;
+  // Instância do serviço que se comunica com o Firestore.
   final FirestoreService _firestoreService = FirestoreService();
 
   @override
   void initState() {
     super.initState();
-    _dataFuture = _firestoreService.fetchDataForHomeScreen();
+    // Inicia a "escuta" dos dados do Firestore assim que a tela é criada.
+    _dataStream = _firestoreService.getHomeScreenDataStream();
   }
 
   @override
   Widget build(BuildContext context) {
-    return FutureBuilder<HomeScreenData>(
-      future: _dataFuture,
+    // StreamBuilder constrói a UI com base nos dados recebidos do Stream.
+    return StreamBuilder<HomeScreenData>(
+      stream: _dataStream,
       builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
+        // Enquanto os dados estão carregando pela primeira vez.
+        if (snapshot.connectionState == ConnectionState.waiting &&
+            !snapshot.hasData) {
           return const Scaffold(
             body: Center(child: CircularProgressIndicator()),
           );
         }
-
+        // Se ocorrer um erro na busca dos dados.
         if (snapshot.hasError) {
-          return Scaffold(
-            body: Center(
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Text(
-                  "Erro ao carregar dados: ${snapshot.error}",
-                  textAlign: TextAlign.center,
-                ),
-              ),
-            ),
-          );
+          return Scaffold(body: Center(child: Text("Erro: ${snapshot.error}")));
+        }
+        // Se não houver dados (estado inicial antes do primeiro evento).
+        if (!snapshot.hasData) {
+          return const Scaffold(body: Center(child: Text("Carregando...")));
         }
 
-        if (snapshot.hasData) {
-          final data = snapshot.data!;
-          // CORREÇÃO: Passa os dados para um novo widget que gerencia seu próprio estado de navegação.
-          return _MainAppShell(data: data);
-        }
-
-        return const Scaffold(body: Center(child: Text("Algo deu errado.")));
+        // Se os dados foram recebidos com sucesso.
+        final data = snapshot.data!;
+        // Constrói a "casca" principal do app com os dados mais recentes.
+        return _MainAppShell(data: data);
       },
     );
   }
 }
 
-/// NOVO: Widget que representa a "casca" principal do app (AppBar + Body + BottomNav).
-/// Ele é um StatefulWidget para gerenciar corretamente o `selectedIndex`.
+// --- WIDGET "CASCA" PRINCIPAL DO APP ---
+// Este widget gerencia a AppBar, o corpo (abas) e a barra de navegação.
 class _MainAppShell extends StatefulWidget {
   final HomeScreenData data;
 
@@ -77,17 +77,31 @@ class _MainAppShell extends StatefulWidget {
 }
 
 class _MainAppShellState extends State<_MainAppShell> {
-  // CORREÇÃO: `selectedIndex` agora é uma variável de estado desta classe.
-  // Isso garante que seu valor seja preservado durante a navegação.
+  // Variável de estado para controlar qual aba está selecionada.
   int _selectedIndex = 0;
-
-  // A lista de telas (widgets) para cada aba.
-  late final List<Widget> _widgetOptions;
+  // Lista de widgets que representam o conteúdo de cada aba.
+  late List<Widget> _widgetOptions;
 
   @override
   void initState() {
     super.initState();
-    // A lista é inicializada uma vez com os dados recebidos.
+    // Constrói a lista de abas quando o widget é criado pela primeira vez.
+    _buildWidgetOptions();
+  }
+
+  @override
+  // Este método é chamado quando os dados recebidos do widget pai (StreamBuilder) mudam.
+  void didUpdateWidget(covariant _MainAppShell oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Se os dados mudaram (ex: um novo hábito foi adicionado),
+    // reconstrói a lista de widgets para atualizar a aba Home.
+    if (widget.data != oldWidget.data) {
+      _buildWidgetOptions();
+    }
+  }
+
+  /// Constrói ou reconstrói a lista de widgets para as abas.
+  void _buildWidgetOptions() {
     _widgetOptions = <Widget>[
       HomeTabContent(
         todayHabits: widget.data.todayHabits,
@@ -99,7 +113,7 @@ class _MainAppShellState extends State<_MainAppShell> {
     ];
   }
 
-  /// Função para atualizar o índice da aba selecionada.
+  /// Função chamada quando um item da barra de navegação é tocado.
   void _onItemTapped(int index) {
     setState(() {
       _selectedIndex = index;
@@ -109,11 +123,11 @@ class _MainAppShellState extends State<_MainAppShell> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      // A AppBar personalizada é construída com o nome de usuário correto.
+      // Usa o widget de AppBar personalizado, passando o nome do usuário.
       appBar: CustomAppBar(userName: widget.data.userName),
-      // O corpo da tela muda de acordo com o `_selectedIndex`.
+      // Exibe o conteúdo da aba selecionada.
       body: _widgetOptions.elementAt(_selectedIndex),
-      // A barra de navegação inferior.
+      // Barra de navegação inferior.
       bottomNavigationBar: BottomNavigationBar(
         items: const <BottomNavigationBarItem>[
           BottomNavigationBarItem(
@@ -140,7 +154,7 @@ class _MainAppShellState extends State<_MainAppShell> {
         currentIndex: _selectedIndex,
         selectedItemColor: const Color(0xFF03A9F4),
         unselectedItemColor: Colors.black,
-        onTap: _onItemTapped, // Chama a função para trocar de aba.
+        onTap: _onItemTapped,
         type: BottomNavigationBarType.fixed,
       ),
     );

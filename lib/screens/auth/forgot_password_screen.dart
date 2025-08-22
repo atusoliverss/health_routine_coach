@@ -1,7 +1,10 @@
 // lib/screens/auth/forgot_password_screen.dart
-import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart'; // Para enviar o e-mail de redefinição
 
+import 'package:flutter/material.dart';
+// Pacote para enviar o e-mail de redefinição de senha.
+import 'package:firebase_auth/firebase_auth.dart';
+
+// --- WIDGET DA TELA DE ESQUECEU A SENHA ---
 class ForgotPasswordScreen extends StatefulWidget {
   const ForgotPasswordScreen({super.key});
 
@@ -10,10 +13,11 @@ class ForgotPasswordScreen extends StatefulWidget {
 }
 
 class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
+  // --- ESTADO E CONTROLADORES ---
   final _emailController = TextEditingController();
   bool _isLoading = false;
-  String? _message;
-  Color _messageColor = Colors.black;
+  String? _message; // Mensagem de sucesso ou erro.
+  Color _messageColor = Colors.black; // Cor da mensagem.
 
   @override
   void dispose() {
@@ -21,7 +25,10 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
     super.dispose();
   }
 
+  // --- LÓGICA DE NEGÓCIO ---
+  /// Envia o e-mail de redefinição de senha para o endereço fornecido.
   Future<void> _sendPasswordResetEmail() async {
+    // Valida se o campo de e-mail foi preenchido.
     if (_emailController.text.trim().isEmpty) {
       setState(() {
         _message = 'Por favor, insira seu e-mail.';
@@ -30,20 +37,25 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
       return;
     }
 
+    // Prepara a UI para a operação de rede.
     setState(() {
       _isLoading = true;
       _message = null;
     });
 
     try {
+      // Chama o método do Firebase para enviar o e-mail.
       await FirebaseAuth.instance.sendPasswordResetEmail(
         email: _emailController.text.trim(),
       );
+      // Exibe uma mensagem de sucesso.
       setState(() {
-        _message = 'Um link de redefinição de senha foi enviado para o seu e-mail!';
+        _message =
+            'Um link de redefinição de senha foi enviado para o seu e-mail!';
         _messageColor = Colors.green;
       });
     } on FirebaseAuthException catch (e) {
+      // Trata erros específicos do Firebase.
       String errorMessage = 'Ocorreu um erro ao enviar o e-mail.';
       if (e.code == 'user-not-found') {
         errorMessage = 'Nenhum usuário encontrado para este e-mail.';
@@ -55,23 +67,24 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
         _messageColor = Colors.red;
       });
     } catch (e) {
+      // Trata erros genéricos.
       setState(() {
         _message = 'Ocorreu um erro inesperado: $e';
         _messageColor = Colors.red;
       });
     } finally {
+      // Garante que o loading seja desativado.
       setState(() {
         _isLoading = false;
       });
     }
   }
 
+  // --- CONSTRUÇÃO DA INTERFACE ---
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Redefinir Senha'),
-      ),
+      appBar: AppBar(title: const Text('Redefinir Senha')),
       body: Padding(
         padding: const EdgeInsets.all(24.0),
         child: Column(
@@ -92,6 +105,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
               keyboardType: TextInputType.emailAddress,
             ),
             const SizedBox(height: 24),
+            // Exibe a mensagem de feedback para o usuário.
             if (_message != null)
               Padding(
                 padding: const EdgeInsets.only(bottom: 16.0),
@@ -101,6 +115,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                   textAlign: TextAlign.center,
                 ),
               ),
+            // Mostra o spinner ou o botão de ação.
             _isLoading
                 ? const CircularProgressIndicator()
                 : ElevatedButton(
@@ -113,7 +128,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
             const SizedBox(height: 16),
             TextButton(
               onPressed: () {
-                Navigator.of(context).pop(); // Volta para a tela de login
+                Navigator.of(context).pop(); // Volta para a tela de login.
               },
               child: const Text('Voltar para o Login'),
             ),

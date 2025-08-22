@@ -1,5 +1,6 @@
 // lib/screens/habitos/detalhe_habito_screen.dart
 
+// --- IMPORTAÇÕES ---
 import 'package:flutter/material.dart';
 import 'package:health_routine_coach/models/habito.dart';
 import 'package:health_routine_coach/services/firestore_service.dart';
@@ -7,7 +8,9 @@ import 'package:health_routine_coach/screens/habitos/add_edit_habito_screen.dart
 import 'package:health_routine_coach/widgets/custom_app_bar.dart';
 import 'package:intl/intl.dart';
 
+// --- WIDGET DA TELA DE DETALHES DO HÁBITO ---
 class DetalheHabitoScreen extends StatefulWidget {
+  // O hábito a ser exibido, recebido da tela anterior.
   final Habito habito;
 
   const DetalheHabitoScreen({super.key, required this.habito});
@@ -17,32 +20,32 @@ class DetalheHabitoScreen extends StatefulWidget {
 }
 
 class _DetalheHabitoScreenState extends State<DetalheHabitoScreen> {
+  // --- ESTADO E SERVIÇOS ---
   final FirestoreService _firestoreService = FirestoreService();
-  late Habito _currentHabito;
-  late Future<String> _userNameFuture;
-  // CORREÇÃO: Trocamos o Future por dados de estado locais para permitir a atualização.
-  Map<String, bool>? _historyData;
-  bool _isHistoryLoading = true;
+  late Habito _currentHabito; // Guarda o estado atual do hábito na tela.
+  late Future<String>
+  _userNameFuture; // Future para buscar o nome do usuário para a AppBar.
+  Map<String, bool>? _historyData; // Armazena o histórico de conclusão.
+  bool _isHistoryLoading =
+      true; // Controla o estado de carregamento do histórico.
 
   @override
   void initState() {
     super.initState();
     _currentHabito = widget.habito;
     _userNameFuture = _firestoreService.getUserName();
-    // Inicia a busca pelo histórico real do hábito.
-    _loadHistory();
+    _loadHistory(); // Inicia a busca pelo histórico real do hábito.
   }
 
-  /// CORREÇÃO: Novo método para carregar (e recarregar) o histórico.
-  Future<void> _loadHistory() async {
-    // Ativa o estado de carregamento.
-    if (mounted) setState(() => _isHistoryLoading = true);
+  // --- MÉTODOS DE LÓGICA ---
 
+  /// Carrega (e recarrega) o histórico de conclusão do hábito.
+  Future<void> _loadHistory() async {
+    if (mounted) setState(() => _isHistoryLoading = true);
     try {
       final history = await _firestoreService.getHabitHistory(
         _currentHabito.id,
       );
-      // Quando os dados chegam, atualiza o estado e desativa o carregamento.
       if (mounted) {
         setState(() {
           _historyData = history;
@@ -50,12 +53,12 @@ class _DetalheHabitoScreenState extends State<DetalheHabitoScreen> {
         });
       }
     } catch (e) {
-      // Em caso de erro, para de carregar e mostra o erro.
       if (mounted) setState(() => _isHistoryLoading = false);
       debugPrint("Erro ao carregar histórico: $e");
     }
   }
 
+  /// Formata o texto da frequência para exibição.
   String _getFrequencyText(Habito habito) {
     switch (habito.frequencyType) {
       case FrequencyType.daily:
@@ -79,6 +82,7 @@ class _DetalheHabitoScreenState extends State<DetalheHabitoScreen> {
     }
   }
 
+  /// Formata o texto do turno para exibição.
   String _getTurnoText(Turno? turno) {
     switch (turno) {
       case Turno.manha:
@@ -92,6 +96,7 @@ class _DetalheHabitoScreenState extends State<DetalheHabitoScreen> {
     }
   }
 
+  /// Exibe a caixa de diálogo de confirmação para exclusão.
   Future<void> _confirmDelete() async {
     final bool? confirm = await showDialog<bool>(
       context: context,
@@ -166,11 +171,9 @@ class _DetalheHabitoScreenState extends State<DetalheHabitoScreen> {
     }
   }
 
-  /// CORREÇÃO: Marca o hábito como concluído e recarrega o histórico.
+  /// Marca o hábito como concluído para a data de HOJE e recarrega o histórico.
   Future<void> _markAsComplete() async {
-    // 1. Atualiza o dado no Firestore.
     await _firestoreService.updateHabitStatus(_currentHabito.id, true);
-
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -180,13 +183,14 @@ class _DetalheHabitoScreenState extends State<DetalheHabitoScreen> {
           backgroundColor: Colors.green,
         ),
       );
-      // 2. Chama o método para buscar os dados novamente e atualizar a tela.
       _loadHistory();
     }
   }
 
+  // --- CONSTRUÇÃO DA INTERFACE ---
   @override
   Widget build(BuildContext context) {
+    // FutureBuilder para garantir que a UI só seja construída após carregar o nome do usuário.
     return FutureBuilder<String>(
       future: _userNameFuture,
       builder: (context, snapshot) {
@@ -205,6 +209,7 @@ class _DetalheHabitoScreenState extends State<DetalheHabitoScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                // Cabeçalho personalizado da página.
                 Row(
                   children: [
                     CircleAvatar(
@@ -230,6 +235,7 @@ class _DetalheHabitoScreenState extends State<DetalheHabitoScreen> {
                 ),
                 const SizedBox(height: 24),
 
+                // Card com os detalhes do hábito.
                 const Text(
                   'DETALHE DO HÁBITO',
                   style: TextStyle(
@@ -277,6 +283,7 @@ class _DetalheHabitoScreenState extends State<DetalheHabitoScreen> {
                 ),
                 const SizedBox(height: 24),
 
+                // Card com o histórico de conclusão.
                 const Text(
                   'HISTÓRICO DE CONCLUSÃO',
                   style: TextStyle(
@@ -293,7 +300,6 @@ class _DetalheHabitoScreenState extends State<DetalheHabitoScreen> {
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    // CORREÇÃO: Usa a nova lógica de estado em vez do FutureBuilder.
                     child: _isHistoryLoading
                         ? const Center(child: CircularProgressIndicator())
                         : (_historyData == null || _historyData!.isEmpty)
@@ -356,6 +362,7 @@ class _DetalheHabitoScreenState extends State<DetalheHabitoScreen> {
                 ),
                 const SizedBox(height: 24),
 
+                // Botões de ação na parte inferior.
                 ElevatedButton.icon(
                   onPressed: _markAsComplete,
                   icon: const Icon(

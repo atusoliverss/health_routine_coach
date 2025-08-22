@@ -1,5 +1,6 @@
 // lib/screens/rotinas/detalhe_rotina_screen.dart
 
+// --- IMPORTAÇÕES ---
 import 'package:flutter/material.dart';
 import 'package:health_routine_coach/models/habito.dart';
 import 'package:health_routine_coach/models/rotina.dart';
@@ -7,7 +8,9 @@ import 'package:health_routine_coach/services/firestore_service.dart';
 import 'package:health_routine_coach/screens/rotinas/add_edit_rotina_screen.dart';
 import 'package:health_routine_coach/widgets/custom_app_bar.dart';
 
+// --- WIDGET DA TELA DE DETALHES DA ROTINA ---
 class DetalheRotinaScreen extends StatefulWidget {
+  // A rotina a ser exibida, recebida da tela anterior.
   final Rotina rotina;
 
   const DetalheRotinaScreen({super.key, required this.rotina});
@@ -17,19 +20,26 @@ class DetalheRotinaScreen extends StatefulWidget {
 }
 
 class _DetalheRotinaScreenState extends State<DetalheRotinaScreen> {
+  // --- ESTADO E SERVIÇOS ---
   final FirestoreService _firestoreService = FirestoreService();
-  late Rotina _currentRotina;
-  late Future<List<Habito>> _habitsInRoutineFuture;
-  late Future<String> _userNameFuture;
+  late Rotina _currentRotina; // Guarda o estado atual da rotina na tela.
+  late Future<List<Habito>>
+  _habitsInRoutineFuture; // Future para buscar os detalhes dos hábitos.
+  late Future<String>
+  _userNameFuture; // Future para buscar o nome do usuário para a AppBar.
 
   @override
   void initState() {
     super.initState();
     _currentRotina = widget.rotina;
-    _loadHabitDetails();
-    _userNameFuture = _firestoreService.getUserName();
+    _loadHabitDetails(); // Inicia a busca pelos detalhes dos hábitos.
+    _userNameFuture = _firestoreService
+        .getUserName(); // Inicia a busca pelo nome do usuário.
   }
 
+  // --- MÉTODOS DE LÓGICA ---
+
+  /// Busca os detalhes completos dos hábitos cujos IDs estão na rotina.
   void _loadHabitDetails() {
     setState(() {
       _habitsInRoutineFuture = _firestoreService.getHabitsOnce().then(
@@ -40,6 +50,7 @@ class _DetalheRotinaScreenState extends State<DetalheRotinaScreen> {
     });
   }
 
+  /// Formata a lista de dias ativos para um texto legível.
   String _formatActiveDays(List<int> days) {
     if (days.length == 7) return 'Todos os dias';
     if (days.isEmpty) return 'Nenhum dia ativo';
@@ -57,6 +68,7 @@ class _DetalheRotinaScreenState extends State<DetalheRotinaScreen> {
     return days.map((day) => dayNames[day] ?? '').join(', ');
   }
 
+  /// Exibe a caixa de diálogo de confirmação para exclusão.
   Future<void> _confirmDelete() async {
     final bool? confirm = await showDialog<bool>(
       context: context,
@@ -82,7 +94,6 @@ class _DetalheRotinaScreenState extends State<DetalheRotinaScreen> {
             left: 20,
             right: 20,
           ),
-          // CORREÇÃO: Os botões agora estão envolvidos por um Row.
           actions: <Widget>[
             Row(
               children: [
@@ -132,8 +143,10 @@ class _DetalheRotinaScreenState extends State<DetalheRotinaScreen> {
     }
   }
 
+  // --- CONSTRUÇÃO DA INTERFACE ---
   @override
   Widget build(BuildContext context) {
+    // FutureBuilder para garantir que a UI só seja construída após carregar o nome do usuário.
     return FutureBuilder<String>(
       future: _userNameFuture,
       builder: (context, snapshot) {
@@ -152,6 +165,7 @@ class _DetalheRotinaScreenState extends State<DetalheRotinaScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                // Cabeçalho personalizado da página.
                 Row(
                   children: [
                     CircleAvatar(
@@ -176,6 +190,8 @@ class _DetalheRotinaScreenState extends State<DetalheRotinaScreen> {
                   ],
                 ),
                 const SizedBox(height: 24),
+
+                // Card com os detalhes da rotina.
                 const Text(
                   'DETALHE DA ROTINA',
                   style: TextStyle(
@@ -187,7 +203,7 @@ class _DetalheRotinaScreenState extends State<DetalheRotinaScreen> {
                 const SizedBox(height: 8),
                 Card(
                   color: Colors.grey[200],
-                  elevation: 3,
+                  elevation: 0,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
@@ -224,6 +240,8 @@ class _DetalheRotinaScreenState extends State<DetalheRotinaScreen> {
                   ),
                 ),
                 const SizedBox(height: 24),
+
+                // Card com a lista de hábitos da rotina.
                 const Text(
                   'HÁBITOS DA ROTINA',
                   style: TextStyle(
@@ -252,7 +270,7 @@ class _DetalheRotinaScreenState extends State<DetalheRotinaScreen> {
                       final habitsInRoutine = snapshot.data!;
                       return Card(
                         color: Colors.grey[200],
-                        elevation: 3,
+                        elevation: 0,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12),
                         ),
@@ -277,6 +295,8 @@ class _DetalheRotinaScreenState extends State<DetalheRotinaScreen> {
                   ),
                 ),
                 const SizedBox(height: 24),
+
+                // Botões de ação na parte inferior.
                 Row(
                   children: [
                     Expanded(

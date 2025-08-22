@@ -1,4 +1,4 @@
-// lib/screens/auth_screen.dart
+// lib/screens/auth/auth_screen.dart
 
 // --- IMPORTAÇÕES ---
 import 'package:flutter/material.dart';
@@ -7,7 +7,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:health_routine_coach/screens/home_screen.dart';
 import 'package:health_routine_coach/screens/auth/forgot_password_screen.dart';
 
-// --- WIDGET PRINCIPAL DA TELA DE AUTENTICAÇÃO ---
+// --- WIDGET DA TELA DE AUTENTICAÇÃO ---
 class AuthScreen extends StatefulWidget {
   const AuthScreen({super.key});
 
@@ -18,18 +18,21 @@ class AuthScreen extends StatefulWidget {
 // --- CLASSE DE ESTADO DA AUTHSCREEN ---
 class _AuthScreenState extends State<AuthScreen> {
   // --- ESTADO DO WIDGET ---
-  bool _isLoginMode = true;
-  bool _isPasswordVisible = false;
-  bool _isLoading = false;
-  String? _errorMessage;
+  bool _isLoginMode =
+      true; // Controla se a tela está em modo Login ou Cadastro.
+  bool _isPasswordVisible = false; // Controla a visibilidade da senha.
+  bool _isLoading = false; // Controla a exibição do spinner de carregamento.
+  String? _errorMessage; // Armazena mensagens de erro para o usuário.
 
-  // --- CONTROLADORES ---
+  // --- CONTROLADORES DE TEXTO ---
+  // Gerenciam o conteúdo dos campos de texto.
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
   final _nameController = TextEditingController();
 
   @override
+  // Libera os recursos dos controladores quando a tela é destruída.
   void dispose() {
     _emailController.dispose();
     _passwordController.dispose();
@@ -44,6 +47,7 @@ class _AuthScreenState extends State<AuthScreen> {
   void _toggleAuthMode() {
     setState(() {
       _isLoginMode = !_isLoginMode;
+      // Limpa os campos para uma nova entrada.
       _emailController.clear();
       _passwordController.clear();
       _confirmPasswordController.clear();
@@ -55,7 +59,7 @@ class _AuthScreenState extends State<AuthScreen> {
 
   /// Processa o envio do formulário, valida e chama o Firebase.
   Future<void> _submitAuthForm() async {
-    // Validações...
+    // 1. Validações dos campos.
     if (_emailController.text.trim().isEmpty ||
         _passwordController.text.trim().isEmpty) {
       setState(
@@ -75,6 +79,7 @@ class _AuthScreenState extends State<AuthScreen> {
       return;
     }
 
+    // 2. Prepara a UI para a operação de rede.
     setState(() {
       _isLoading = true;
       _errorMessage = null;
@@ -89,14 +94,17 @@ class _AuthScreenState extends State<AuthScreen> {
         );
       } else {
         // Lógica de Cadastro
+        // 1. Cria o usuário no Firebase Authentication.
         UserCredential userCredential = await FirebaseAuth.instance
             .createUserWithEmailAndPassword(
               email: _emailController.text.trim(),
               password: _passwordController.text.trim(),
             );
+        // 2. Atualiza o nome de exibição na autenticação.
         await userCredential.user?.updateDisplayName(
           _nameController.text.trim(),
         );
+        // 3. Cria o documento do usuário no Firestore.
         await FirebaseFirestore.instance
             .collection('users')
             .doc(userCredential.user!.uid)
@@ -108,7 +116,7 @@ class _AuthScreenState extends State<AuthScreen> {
             });
       }
 
-      // Navega para a HomeScreen com uma transição de Fade.
+      // 4. Navega para a HomeScreen com uma transição de Fade.
       if (mounted) {
         Navigator.of(context).pushReplacement(
           PageRouteBuilder(
@@ -123,6 +131,7 @@ class _AuthScreenState extends State<AuthScreen> {
         );
       }
     } on FirebaseAuthException catch (e) {
+      // 5. Trata erros específicos do Firebase.
       String message = 'Ocorreu um erro. Por favor, tente novamente.';
       if (e.code == 'weak-password')
         message = 'A senha fornecida é muito fraca.';
@@ -144,6 +153,7 @@ class _AuthScreenState extends State<AuthScreen> {
 
   // --- MÉTODOS DE CONSTRUÇÃO DE WIDGETS (REUTILIZÁVEIS) ---
 
+  /// Constrói um campo de texto padrão.
   Widget _buildTextField({
     required TextEditingController controller,
     required String hintText,
@@ -165,6 +175,7 @@ class _AuthScreenState extends State<AuthScreen> {
     );
   }
 
+  /// Constrói um campo de senha com ícone de visibilidade.
   Widget _buildPasswordField({
     required TextEditingController controller,
     required String hintText,
@@ -237,10 +248,9 @@ class _AuthScreenState extends State<AuthScreen> {
               ),
               const SizedBox(height: 32),
 
-              // ANIMAÇÃO PARA O CAMPO DE NOME
+              // Animação para os campos de cadastro.
               AnimatedSwitcher(
                 duration: const Duration(milliseconds: 400),
-                // ALTERAÇÃO: A transição agora é apenas um Fade, igual à da SplashScreen.
                 transitionBuilder: (Widget child, Animation<double> animation) {
                   return FadeTransition(opacity: animation, child: child);
                 },
@@ -269,10 +279,8 @@ class _AuthScreenState extends State<AuthScreen> {
                 hintText: 'Senha',
               ),
 
-              // ANIMAÇÃO PARA O CAMPO DE CONFIRMAÇÃO DE SENHA
               AnimatedSwitcher(
                 duration: const Duration(milliseconds: 400),
-                // ALTERAÇÃO: A transição agora é apenas um Fade.
                 transitionBuilder: (Widget child, Animation<double> animation) {
                   return FadeTransition(opacity: animation, child: child);
                 },
@@ -307,7 +315,7 @@ class _AuthScreenState extends State<AuthScreen> {
                       onPressed: _submitAuthForm,
                       style: ElevatedButton.styleFrom(
                         minimumSize: const Size.fromHeight(50),
-                        backgroundColor: Color(0xFF03A9F4),
+                        backgroundColor: const Color(0xFF03A9F4),
                       ),
                       child: Text(
                         _isLoginMode ? 'Entrar' : 'Criar conta',
@@ -351,7 +359,7 @@ class _AuthScreenState extends State<AuthScreen> {
                       _isLoginMode ? 'Criar conta' : 'Entrar',
                       style: TextStyle(
                         fontSize: 16,
-                        color: Color(0xFF03A9F4),
+                        color: const Color(0xFF03A9F4),
                         fontWeight: FontWeight.bold,
                       ),
                     ),

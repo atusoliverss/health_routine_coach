@@ -1,10 +1,17 @@
-class Rotina {
-  final String id;
-  final String name;
-  final String? description;
-  final List<int> activeDays; // Dias da semana (1=Seg, 7=Dom)
-  final List<String> habitIds; // IDs dos hábitos que compõem esta rotina
+// lib/models/rotina.dart
 
+/// Representa a estrutura de uma Rotina, que é um agrupamento de hábitos.
+class Rotina {
+  // --- PROPRIEDADES ---
+  final String id; // ID único da rotina.
+  final String name; // Nome da rotina (ex: "Rotina Matinal").
+  final String? description; // Descrição opcional.
+  final List<int>
+  activeDays; // Dias da semana em que a rotina está ativa (1=Seg, 7=Dom).
+  final List<String>
+  habitIds; // Lista de IDs dos hábitos que compõem esta rotina.
+
+  // --- CONSTRUTOR ---
   Rotina({
     required this.id,
     required this.name,
@@ -13,7 +20,9 @@ class Rotina {
     required this.habitIds,
   });
 
-  /// Construtor para criar uma Rotina a partir de dados do Firestore.
+  // --- CONVERSÃO DE DADOS (FIRESTORE) ---
+
+  /// Construtor factory para criar um objeto Rotina a partir de dados do Firestore.
   factory Rotina.fromFirestore(String id, Map<String, dynamic> data) {
     return Rotina(
       id: id,
@@ -24,7 +33,7 @@ class Rotina {
     );
   }
 
-  /// Método para converter uma Rotina em um formato para salvar no Firestore.
+  /// Método para converter o objeto Rotina em um Map para salvar no Firestore.
   Map<String, dynamic> toFirestore() {
     return {
       'name': name,
